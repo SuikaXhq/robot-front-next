@@ -55,6 +55,7 @@ export interface ChatMessage {
   isTaskNotification?: boolean;
   taskStatus?: 'pending' | 'running' | 'completed';
   isPermissionRequest?: boolean;
+  isPermissionDeniedResult?: boolean;
   permissionFiles?: string[];
   permissionAction?: 'read' | 'write' | 'execute';
   permissionRequestId?: string;

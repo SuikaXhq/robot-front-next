@@ -49,6 +49,9 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
     dangerouslySkipPermissionsRef.current = dangerouslySkipPermissions;
   }, [dangerouslySkipPermissions]);
 
+  const lastUserMessageRef = useRef<{ content: string; attachments?: ChatAttachment[] } | null>(null);
+  const pendingRetryRef = useRef<{ dirs: string[]; message: { content: string; attachments?: ChatAttachment[] } } | null>(null);
+
   const {
     currentSession,
     currentSessionId,
@@ -265,15 +268,34 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
             } else if (toolContent && typeof toolContent === 'object') {
               text = toolContent.text || toolContent.content || JSON.stringify(toolContent);
             }
-            setMessages((prev) => [
-              ...prev,
-              {
-                type: 'tool',
-                content: text || `[Tool result: ${b.tool_use_id || 'unknown'}]`,
-                isStreaming: false,
-                timestamp: new Date().toISOString(),
-              } as ChatMessage,
-            ]);
+            const isDenied = typeof text === 'string' && text.includes("Claude requested permissions") && text.includes("but you haven't granted it yet");
+            const isFileDenied = isDenied && /\bread from\b|\bwrite to\b/i.test(text);
+            if (isFileDenied) {
+              const pathMatch = text.match(/(?:from|to)\s+(.+?)(?:,|\s+but you haven't granted it yet)/i);
+              const deniedTarget = pathMatch ? pathMatch[1].trim() : text;
+              setMessages((prev) => [
+                ...prev,
+                {
+                  type: 'tool',
+                  content: text,
+                  isPermissionDeniedResult: true,
+                  permissionFiles: [deniedTarget],
+                  permissionAction: 'read',
+                  isStreaming: false,
+                  timestamp: new Date().toISOString(),
+                } as ChatMessage,
+              ]);
+            } else {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  type: 'tool',
+                  content: text || `[Tool result: ${b.tool_use_id || 'unknown'}]`,
+                  isStreaming: false,
+                  timestamp: new Date().toISOString(),
+                } as ChatMessage,
+              ]);
+            }
           }
         }
         break;
@@ -302,24 +324,6 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
         break;
       }
 
-      case 'permission_request': {
-        const suggestions = Array.isArray(event.permission_suggestions) ? event.permission_suggestions : [];
-        setMessages((prev) => [
-          ...prev,
-          {
-            type: 'assistant',
-            content: event.description || `Claude 请求执行 ${event.tool_name || '操作'}`,
-            isPermissionRequest: true,
-            permissionFiles: suggestions,
-            permissionAction: 'execute',
-            permissionRequestId: event.request_id,
-            isStreaming: false,
-            timestamp: new Date().toISOString(),
-            messageId: event.request_id,
-          } as ChatMessage,
-        ]);
-        break;
-      }
     }
   }, []);
 
@@ -343,6 +347,20 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       },
       onSessionStarted: () => {
         setIsSessionReady(true);
+        if (pendingRetryRef.current) {
+          const { dirs, message } = pendingRetryRef.current;
+          pendingRetryRef.current = null;
+          setMessages((prev) => [
+            ...prev,
+            {
+              type: 'user',
+              content: `已自动添加目录权限: ${dirs.join(', ')}，正在重试上一条消息...`,
+              timestamp: new Date().toISOString(),
+            } as ChatMessage,
+          ]);
+          claudeBridge.sendMessage(message.content);
+          setIsStreaming(true);
+        }
       },
       onSessionEnded: () => {
         setIsStreaming(false);
@@ -493,6 +511,8 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       } as ChatMessage,
     ]);
 
+    lastUserMessageRef.current = { content: claudeContent, attachments };
+
     if (!claudeBridge.isConnected()) {
       setMessages((prev) => [
         ...prev,
@@ -579,15 +599,42 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
                   m.permissionRequestId === requestId ? { ...m, isPermissionRequest: false } : m
                 )
               );
+              setMessages((prev) => [
+                ...prev,
+                {
+                  type: 'user',
+                  content: allow ? `已允许访问: ${(files || []).join(', ')}` : '已拒绝访问',
+                  timestamp: new Date().toISOString(),
+                },
+              ]);
+              return;
             }
-            setMessages((prev) => [
-              ...prev,
-              {
-                type: 'user',
-                content: allow ? `已允许访问: ${(files || []).join(', ')}` : '已拒绝访问',
-                timestamp: new Date().toISOString(),
-              },
-            ]);
+            // Approach A: stream-json workaround for permission denials
+            if (files && files.length > 0) {
+              if (allow) {
+                const dirs = files
+                  .map((p) => {
+                    const normalized = p.replace(/\\/g, '/');
+                    const lastSlash = normalized.lastIndexOf('/');
+                    return lastSlash >= 0 ? normalized.slice(0, lastSlash) : normalized;
+                  })
+                  .filter(Boolean);
+                if (dirs.length > 0 && lastUserMessageRef.current) {
+                  pendingRetryRef.current = { dirs, message: lastUserMessageRef.current };
+                  claudeBridge.closeSession();
+                  claudeBridge.startSession({ allowedDirs: dirs, dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current });
+                  return;
+                }
+              }
+              setMessages((prev) => [
+                ...prev,
+                {
+                  type: 'user',
+                  content: '已拒绝访问',
+                  timestamp: new Date().toISOString(),
+                },
+              ]);
+            }
           }}
         />
       </div>

@@ -425,6 +425,51 @@ const ClaudeMessage = memo(({
                       )
                     )}
                   </>
+                ) : message.isPermissionDeniedResult ? (
+                  <div className={styles.permissionPanel}>
+                    <div className={styles.permissionHeader}>
+                      <div className={styles.permissionIcon}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                          <path d="M12 8v4" />
+                          <path d="M12 16h.01" />
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div className={styles.permissionTitle}>权限受限，无法访问文件</div>
+                        <div className={styles.permissionDesc}>
+                          Claude 需要访问以下文件才能继续。允许将自动添加对应目录权限并重试上一条消息。
+                        </div>
+                        {message.permissionFiles && message.permissionFiles.length > 0 && (
+                          <div className={styles.permissionFileList}>
+                            {message.permissionFiles.map((file, idx) => (
+                              <div key={idx} className={styles.permissionFileItem}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                                  <polyline points="13 2 13 9 20 9" />
+                                </svg>
+                                <span className={styles.permissionFileName}>{file}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className={styles.permissionActions}>
+                          <button
+                            className={styles.permissionAllowBtn}
+                            onClick={() => onPermissionRequest?.(true, message.permissionFiles, message.permissionRequestId)}
+                          >
+                            允许（添加目录权限并重试）
+                          </button>
+                          <button
+                            className={styles.permissionDenyBtn}
+                            onClick={() => onPermissionRequest?.(false, message.permissionFiles, message.permissionRequestId)}
+                          >
+                            拒绝
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : message.isPermissionRequest ? (
                   <div className={styles.permissionPanel}>
                     <div className={styles.permissionHeader}>
