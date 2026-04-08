@@ -8,6 +8,7 @@
     "dev:all": "concurrently \"npm run dev:bridge\" \"npm run dev\"",
     "build": "next build",
     "start": "next start",
+    "start:prod": "concurrently \"npx tsx src/server/claude-bridge.ts\" \"next start\"",
     "lint": "eslint"
   },
   "dependencies": {
