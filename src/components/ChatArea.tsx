@@ -13,6 +13,7 @@ import { Select, Tree } from 'antd';
 import type { ChatMessage, ChatAttachment } from './chat/types';
 import ChatMessagesPane from './chat/ChatMessagesPane';
 import { ChatInput } from './chat/ChatInput';
+import TerminalPane, { type TerminalPaneRef } from './chat/TerminalPane';
 import { claudeBridge, type StreamEvent } from '@/services/claudeBridgeClient';
 import { useChatSessions } from '@/contexts/ChatSessionContext';
 
@@ -49,6 +50,9 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
     dangerouslySkipPermissionsRef.current = dangerouslySkipPermissions;
   }, [dangerouslySkipPermissions]);
 
+  const [mode, setMode] = useState<'chat' | 'terminal'>('chat');
+  const terminalPaneRef = useRef<TerminalPaneRef>(null);
+
   const {
     currentSession,
     currentSessionId,
@@ -79,13 +83,14 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
     return () => clearTimeout(timer);
   }, [messages, currentSessionId, updateSessionMessages]);
 
-  // Start a fresh backend session when switching frontend sessions
+  // Start a fresh backend session when switching frontend sessions or mode
   useEffect(() => {
     if (!isBridgeReady || !currentSessionId) return;
     setIsSessionReady(false);
     claudeBridge.closeSession();
-    claudeBridge.startSession({ dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current });
-  }, [currentSessionId, isBridgeReady]);
+    terminalPaneRef.current?.clear();
+    claudeBridge.startSession({ dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current, mode });
+  }, [currentSessionId, isBridgeReady, mode]);
 
   const handleEvent = useCallback((event: StreamEvent) => {
     switch (event.type) {
@@ -341,8 +346,14 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
         ]);
         setIsStreaming(false);
       },
-      onSessionStarted: () => {
+      onTerminalData: (data) => {
+        terminalPaneRef.current?.write(data);
+      },
+      onSessionStarted: (_, startedMode) => {
         setIsSessionReady(true);
+        if (startedMode === 'terminal') {
+          terminalPaneRef.current?.clear();
+        }
       },
       onSessionEnded: () => {
         setIsStreaming(false);
@@ -464,6 +475,24 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
   };
 
   const handleSendMessage = (content: string, attachments?: ChatAttachment[]) => {
+    if (mode === 'terminal') {
+      if (!claudeBridge.isConnected()) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: 'error',
+            content: '桥接服务未连接，请确保已运行 `npm run dev:bridge`',
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+        return;
+      }
+      // Echo typed text into terminal for visibility
+      terminalPaneRef.current?.write(content + '\r\n');
+      claudeBridge.sendMessage(content);
+      return;
+    }
+
     if (!attachments?.length && content.trim().startsWith('/')) {
       if (handleCommand(content.trim())) return;
     }
@@ -568,28 +597,32 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       </div>
 
       <div className={styles.messagesContainer}>
-        <ChatMessagesPane
-          chatMessages={messages}
-          isLoading={isStreaming}
-          onPermissionRequest={(allow, files, requestId) => {
-            if (requestId) {
-              claudeBridge.sendPermissionResponse(requestId, allow);
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.permissionRequestId === requestId ? { ...m, isPermissionRequest: false } : m
-                )
-              );
-            }
-            setMessages((prev) => [
-              ...prev,
-              {
-                type: 'user',
-                content: allow ? `已允许访问: ${(files || []).join(', ')}` : '已拒绝访问',
-                timestamp: new Date().toISOString(),
-              },
-            ]);
-          }}
-        />
+        {mode === 'terminal' ? (
+          <TerminalPane ref={terminalPaneRef} onData={(data) => claudeBridge.sendTerminalInput(data)} />
+        ) : (
+          <ChatMessagesPane
+            chatMessages={messages}
+            isLoading={isStreaming}
+            onPermissionRequest={(allow, files, requestId) => {
+              if (requestId) {
+                claudeBridge.sendPermissionResponse(requestId, allow);
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.permissionRequestId === requestId ? { ...m, isPermissionRequest: false } : m
+                  )
+                );
+              }
+              setMessages((prev) => [
+                ...prev,
+                {
+                  type: 'user',
+                  content: allow ? `已允许访问: ${(files || []).join(', ')}` : '已拒绝访问',
+                  timestamp: new Date().toISOString(),
+                },
+              ]);
+            }}
+          />
+        )}
       </div>
 
       <div className={styles.chatFooter}>
@@ -632,14 +665,41 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
               )}
             </div>
 
-            <div style={{ marginTop: 8, fontSize: 12, color: '#606266', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#606266', display: 'flex', alignItems: 'center', gap: 16 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={dangerouslySkipPermissions}
-                  onChange={(e) => setDangerouslySkipPermissions(e.target.checked)}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setDangerouslySkipPermissions(next);
+                    dangerouslySkipPermissionsRef.current = next;
+                    if (claudeBridge.isConnected() && isSessionReady) {
+                      setMessages((prev) => [
+                        ...prev,
+                        {
+                          type: 'assistant',
+                          content: `已${next ? '开启' : '关闭'}跳过权限确认，正在自动重启会话以应用设置...`,
+                          timestamp: new Date().toISOString(),
+                        } as ChatMessage,
+                      ]);
+                      claudeBridge.closeSession();
+                      claudeBridge.startSession({ dangerouslySkipPermissions: next, mode });
+                    }
+                  }}
                 />
                 <span>跳过权限确认（自动允许所有操作）</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <span>模式:</span>
+                <select
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value as 'chat' | 'terminal')}
+                  style={{ fontSize: 12, padding: '2px 6px', borderRadius: 4, border: '1px solid #dcdfe6' }}
+                >
+                  <option value="chat">Chat (JSON 流)</option>
+                  <option value="terminal">Terminal (PTY 原生交互)</option>
+                </select>
               </label>
             </div>
           </div>

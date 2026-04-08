@@ -118,8 +118,9 @@ export interface BridgeCallbacks {
   onConnect?: (clientId: string) => void;
   onDisconnect?: () => void;
   onEvent?: (event: StreamEvent) => void;
+  onTerminalData?: (data: string) => void;
   onError?: (message: string) => void;
-  onSessionStarted?: (sessionId?: string) => void;
+  onSessionStarted?: (sessionId?: string, mode?: string) => void;
   onSessionEnded?: (reason: string) => void;
 }
 
@@ -181,10 +182,10 @@ export class ClaudeBridgeClient {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
-  startSession(options?: { sessionId?: string; projectPath?: string; allowedDirs?: string[]; dangerouslySkipPermissions?: boolean; model?: string }): void {
+  startSession(options?: { sessionId?: string; projectPath?: string; allowedDirs?: string[]; dangerouslySkipPermissions?: boolean; model?: string; mode?: 'chat' | 'terminal' }): void {
     if (!this.ensureConnected()) return;
     this.buffer = '';
-    this.send({ type: 'session.start', sessionId: options?.sessionId, projectPath: options?.projectPath, allowedDirs: options?.allowedDirs, dangerouslySkipPermissions: options?.dangerouslySkipPermissions, model: options?.model });
+    this.send({ type: 'session.start', sessionId: options?.sessionId, projectPath: options?.projectPath, allowedDirs: options?.allowedDirs, dangerouslySkipPermissions: options?.dangerouslySkipPermissions, model: options?.model, mode: options?.mode || 'chat' });
   }
 
   sendMessage(content: string): void {
@@ -223,6 +224,11 @@ export class ClaudeBridgeClient {
     });
   }
 
+  sendTerminalInput(data: string): void {
+    if (!this.ensureConnected()) return;
+    this.send({ type: 'terminal.input', data });
+  }
+
   setCallbacks(callbacks: BridgeCallbacks): void {
     this.callbacks = { ...this.callbacks, ...callbacks };
   }
@@ -249,11 +255,15 @@ export class ClaudeBridgeClient {
       }
       case 'session.started': {
         this.buffer = '';
-        this.callbacks.onSessionStarted?.(msg.sessionId);
+        this.callbacks.onSessionStarted?.(msg.sessionId, msg.mode);
         break;
       }
       case 'assistant.chunk': {
         this.handleChunk(msg.content);
+        break;
+      }
+      case 'terminal.data': {
+        this.callbacks.onTerminalData?.(msg.data || '');
         break;
       }
       case 'error': {
