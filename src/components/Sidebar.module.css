@@ -1,0 +1,257 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+}
+
+.sidebarHeader {
+  padding: 20px 20px 16px;
+}
+
+.robotTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logoCircle {
+  width: 28px;
+  height: 28px;
+  background: conic-gradient(from 180deg at 50% 50%, #409EFF -18.75deg, #67C23A 101.25deg, #E6A23C 202.5deg, #F56C6C 311.25deg, #409EFF 341.25deg);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logoInner {
+  width: 12px;
+  height: 12px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.titleText {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.historyList {
+  padding: 0 16px 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.listTitle {
+  font-size: 13px;
+  color: #909399;
+}
+
+.listMore {
+  font-size: 12px;
+  color: #909399;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.historyCard {
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.historyCard:hover {
+  background-color: #f5f7fa;
+}
+
+.historyCard.active {
+  background-color: #f0f7ff;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.cardStatus {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.success .dot {
+  background-color: #67c23a;
+}
+
+.success {
+  color: #67c23a;
+}
+
+.danger .dot {
+  background-color: #f56c6c;
+}
+
+.danger {
+  color: #f56c6c;
+}
+
+.cardDesc {
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 8px;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #c0c4cc;
+}
+
+.sidebarDivider {
+  width: calc(100% - 40px);
+  margin: 0 auto;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(200, 204, 211, 0.8) 20%, rgba(200, 204, 211, 0.8) 80%, transparent);
+  flex-shrink: 0;
+}
+
+.taskTreeSection {
+  padding: 16px 20px;
+  height: 48%;
+  display: flex;
+  flex-direction: column;
+}
+
+.taskHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.taskTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.taskTabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.segmentedControl {
+  display: flex;
+  background-color: #f2f3f5;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.segTab {
+  font-size: 13px;
+  color: #909399;
+  cursor: pointer;
+  padding: 4px 16px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.segTab:hover {
+  color: var(--primary-color);
+}
+
+.segTabActive {
+  background-color: #ffffff;
+  color: var(--primary-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-weight: 500;
+}
+
+.treeContainer {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.customTreeNode {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  padding-right: 4px;
+  width: 100%;
+}
+
+.nodeLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nodeLabel {
+  color: #303133;
+}
+
+.nodeRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.moreIcon {
+  font-size: 12px;
+  color: #909399;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+  visibility: hidden;
+  transition: all 0.2s;
+}
+
+.customTreeNode:hover .moreIcon {
+  visibility: visible;
+}
+
+.moreIcon:hover {
+  color: var(--primary-color);
+  background: #f0f7ff;
+}

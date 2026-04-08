@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(ls -la E:/robot-front-next/.env*)",
+      "Bash(xargs grep:*)",
+      "Bash(timeout 5 npx tsx src/server/claude-bridge.ts)",
+      "Bash(npm uninstall:*)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3002)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(where claude:*)",
+      "Bash(claude.cmd:*)",
+      "Bash(echo '{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"帮我看看 C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\p_OpenlabAI\\\\\\\\\\\\\\\\Desktop\\\\\\\\\\\\\\\\7.png 里是什么内容\"}}')",
+      "Bash(claude --print --output-format=stream-json --input-format=stream-json --verbose)",
+      "Bash(./node_modules/.bin/tsc --noEmit --pretty)",
+      "Bash(command -v claude)",
+      "Bash(npm root:*)",
+      "Bash(xargs -I{} find {} -maxdepth 1 -name \"*claude*\")",
+      "Read(//c/Program Files/nodejs/**)",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
+    ]
+  }
+}

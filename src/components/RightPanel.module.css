@@ -1,0 +1,14 @@
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.rightPanel > * {
+  flex: 1;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 0;
+}

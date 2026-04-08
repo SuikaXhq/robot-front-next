@@ -1,0 +1,57 @@
+.messageWrapper {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  max-width: 48rem; /* matches max-w-3xl from claude-web-ui (~768px) */
+  margin: 0 auto;
+}
+
+.userRow {
+  justify-content: flex-end;
+}
+
+.assistantRow {
+  justify-content: flex-start;
+}
+
+.avatar {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.messageContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 85%;
+}
+
+.bubble {
+  padding: 12px 16px;
+  border-radius: 16px;
+  /* padding to handle internal margins cleanly */
+}
+
+/* User Bubble Styles (Primary Color) */
+.userBubble {
+  background-color: var(--primary-color, #409eff);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.userText {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Assistant Bubble Styles (Light Gray/White Background) */
+.assistantBubble {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color, #e4e7ed);
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  color: var(--text-primary, #303133);
+}

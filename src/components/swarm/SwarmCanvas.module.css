@@ -1,0 +1,293 @@
+.swarmCanvasContainer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: #f8f9fa;
+}
+
+.canvasHeader {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  z-index: 10;
+}
+
+.canvasTools {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  gap: 16px;
+}
+
+.toolIcon {
+  font-size: 18px;
+  color: #606266;
+  cursor: pointer;
+}
+
+.toolIcon:hover {
+  color: var(--primary-color);
+}
+
+.divider {
+  color: #dcdfe6;
+}
+
+.zoomLabel {
+  font-size: 14px;
+  color: #606266;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.canvasBody {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Custom Node Styles */
+.customNode {
+  width: 100px;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nodeRings {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 6px;
+}
+
+.ringSvg {
+  position: absolute;
+  inset: 0;
+  width: 64px;
+  height: 64px;
+  overflow: visible;
+}
+
+.ringOuterBg {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.rotatingLaser {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0%, transparent 30%, var(--glow-color) 100%);
+  -webkit-mask: radial-gradient(circle at center, transparent 28.5px, #000 29px, #000 31px, transparent 31.5px);
+  mask: radial-gradient(circle at center, transparent 28.5px, #000 29px, #000 31px, transparent 31.5px);
+  animation: laserSpin 1.5s linear infinite;
+  filter: drop-shadow(0 0 4px var(--glow-color)) drop-shadow(0 0 6px var(--glow-color));
+}
+
+.laserHead {
+  position: absolute;
+  top: 1px;
+  left: 31px;
+  width: 2px;
+  height: 2px;
+  background-color: var(--glow-color);
+  border-radius: 50%;
+}
+
+.pulseRing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--glow-color);
+  animation: pulseRing 1.6s ease-out infinite;
+  opacity: 0.6;
+}
+
+@keyframes laserSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.nodeIconInner {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nodeContentBox {
+  margin-top: 4px;
+  padding: 4px 6px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 2px;
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: transparent;
+}
+
+.nodeTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.nodeIp {
+  font-size: 11px;
+  color: #909399;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.textStatus {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.handle {
+  opacity: 0;
+}
+
+/* Task Flow Panel */
+.taskFlowPanel {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  bottom: 16px;
+  width: 300px;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ebeef5;
+  z-index: 10;
+  transition: width 0.25s ease;
+}
+
+.taskFlowExpanded {
+  width: 520px;
+}
+
+.taskFlowHeader {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.expandIcon {
+  color: #909399;
+  cursor: pointer;
+}
+
+.badge {
+  background-color: #f4f4f5;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: normal;
+  color: #909399;
+  margin-left: 6px;
+}
+
+.taskFlowBody {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.flowItem {
+  display: flex;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.flowItem::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 14px;
+  bottom: -16px;
+  width: 1px;
+  background-color: #ebeef5;
+}
+
+.flowItem:last-child::before {
+  display: none;
+}
+
+.flowDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 5px;
+  margin-right: 12px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.primary { background-color: #409eff; }
+.purple { background-color: #9c27b0; }
+.warning { background-color: #e6a23c; }
+
+.flowContent {
+  flex: 1;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+  padding: 8px;
+  background: white;
+}
+
+.flowText {
+  font-size: 13px;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.flowTime {
+  font-size: 12px;
+  color: #909399;
+}

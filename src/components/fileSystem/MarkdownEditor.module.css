@@ -1,0 +1,176 @@
+.markdownEditor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fileName {
+  font-weight: 500;
+  font-size: 14px;
+  color: #303133;
+}
+
+.unsavedIndicator {
+  font-size: 12px;
+  color: #f56c6c;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+}
+
+/* 编辑器容器 */
+.editorContainer {
+  flex: 1;
+  overflow: auto;
+  background-color: #fff;
+}
+
+.editorContainer :global(.w-md-editor) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.editorContainer :global(.w-md-editor-content) {
+  font-size: 14px;
+}
+
+/* 预览容器 */
+.previewContainer {
+  padding: 20px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+  min-height: 100%;
+}
+
+.previewContainer :global(.wmde-markdown) {
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.previewContainer :global(.wmde-markdown h1) {
+  font-size: 28px;
+  border-bottom: 2px solid #e4e7ed;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.previewContainer :global(.wmde-markdown h2) {
+  font-size: 22px;
+  border-bottom: 1px solid #e4e7ed;
+  padding-bottom: 6px;
+  margin-top: 24px;
+  margin-bottom: 14px;
+}
+
+.previewContainer :global(.wmde-markdown h3) {
+  font-size: 18px;
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+.previewContainer :global(.wmde-markdown code) {
+  background-color: #f4f5f7;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.previewContainer :global(.wmde-markdown pre) {
+  background-color: #1e1e1e;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.previewContainer :global(.wmde-markdown pre code) {
+  background-color: transparent;
+  padding: 0;
+  color: #d4d4d4;
+}
+
+.previewContainer :global(.wmde-markdown blockquote) {
+  border-left: 4px solid var(--primary-color);
+  padding-left: 16px;
+  margin-left: 0;
+  color: #606266;
+  background-color: #f4f5f7;
+  padding: 12px 16px;
+  border-radius: 0 4px 4px 0;
+}
+
+.previewContainer :global(.wmde-markdown table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.previewContainer :global(.wmde-markdown th),
+.previewContainer :global(.wmde-markdown td) {
+  border: 1px solid #dcdfe6;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.previewContainer :global(.wmde-markdown th) {
+  background-color: #f5f7fa;
+  font-weight: 500;
+}
+
+.previewContainer :global(.wmde-markdown tr:nth-child(even)) {
+  background-color: #fafafa;
+}
+
+.previewContainer :global(.wmde-markdown ul),
+.previewContainer :global(.wmde-markdown ol) {
+  padding-left: 24px;
+}
+
+.previewContainer :global(.wmde-markdown li) {
+  margin: 6px 0;
+}
+
+.previewContainer :global(.wmde-markdown a) {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.previewContainer :global(.wmde-markdown a:hover) {
+  text-decoration: underline;
+}
+
+.previewContainer :global(.wmde-markdown img) {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+/* 底部状态栏 */
+.statusBar {
+  display: flex;
+  gap: 24px;
+  padding: 8px 16px;
+  background-color: #f5f7fa;
+  border-top: 1px solid #e4e7ed;
+  font-size: 12px;
+  color: #909399;
+}

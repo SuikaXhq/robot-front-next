@@ -1,0 +1,83 @@
+.swarmView {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 16px;
+}
+
+.swarmTopHalf {
+  flex: 5;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.swarmBottomHalf {
+  flex: 4;
+  display: flex;
+  gap: 16px;
+  min-height: 0;
+}
+
+.roleManagementPanel {
+  flex: 3;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: flex 0.25s ease;
+  min-width: 0;
+}
+
+.roleCollapsed {
+  flex: 0 0 48px;
+}
+
+.collapsedRolePanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.dividerBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapseToggleBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #e4e7ed);
+  background-color: #fff;
+  border-radius: 6px;
+  color: #606266;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.collapseToggleBtn:hover {
+  color: var(--primary-color, #409eff);
+  border-color: var(--primary-color, #409eff);
+}
+
+.discussionGroupPanel {
+  flex: 7;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

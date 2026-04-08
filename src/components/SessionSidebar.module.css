@@ -1,0 +1,132 @@
+.sessionList {
+  padding: 0 16px 16px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sessionListHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.sessionListTitle {
+  font-size: 13px;
+  color: #909399;
+}
+
+.newSessionBtn {
+  font-size: 12px;
+  color: var(--primary-color, #409eff);
+  padding: 0 4px;
+}
+
+.newSessionBtn:hover {
+  color: #2f8bf5;
+  background: transparent;
+}
+
+.sessionItems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emptyState {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #c0c4cc;
+}
+
+.sessionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border: 1px solid transparent;
+}
+
+.sessionItem:hover {
+  background-color: #f5f7fa;
+}
+
+.sessionItemActive {
+  background-color: #f0f7ff;
+  border-color: #d6e9ff;
+}
+
+.sessionItemLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sessionIcon {
+  font-size: 14px;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.sessionItemActive .sessionIcon {
+  color: var(--primary-color, #409eff);
+}
+
+.sessionTitle {
+  font-size: 14px;
+  color: #303133;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.sessionItemActive .sessionTitle {
+  font-weight: 500;
+}
+
+.sessionItemRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sessionTime {
+  font-size: 11px;
+  color: #c0c4cc;
+}
+
+.deleteBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #c0c4cc;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.sessionItem:hover .deleteBtn {
+  opacity: 1;
+}
+
+.deleteBtn:hover {
+  background-color: #fde2e2;
+  color: #f56c6c;
+}

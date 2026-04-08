@@ -1,0 +1,65 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 20px;
+}
+
+.logoArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logoIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #409eff, #67c23a);
+}
+
+.logoText {
+  font-size: 16px;
+  color: #333;
+}
+
+.logoText strong {
+  font-weight: 600;
+}
+
+.navLinks {
+  display: flex;
+  gap: 20px;
+}
+
+.navBtn {
+  color: #606266;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.navBtn:hover {
+  color: var(--primary-color);
+}
+
+.activeBtn {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.username {
+  font-size: 14px;
+  color: #333;
+}

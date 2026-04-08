@@ -1,0 +1,149 @@
+.markdownContainer {
+  font-size: 14px;
+  line-height: 1.6;
+  color: inherit;
+  word-break: break-word;
+}
+
+.markdownContainer > *:first-child {
+  margin-top: 0;
+}
+
+.markdownContainer > *:last-child {
+  margin-bottom: 0;
+}
+
+.paragraph {
+  margin-bottom: 0.8em;
+}
+
+.list {
+  margin-bottom: 0.8em;
+  padding-left: 20px;
+}
+
+.listItem {
+  margin-bottom: 4px;
+}
+
+.link {
+  color: var(--primary-color, #409eff);
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.inlineCode {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #e83e8c;
+}
+
+.codeBlock {
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  margin-bottom: 1em;
+  margin-top: 0.5em;
+  overflow: hidden;
+}
+
+.codeLangBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(255, 255, 255, 0.06);
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.codeLangName {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #a0a0a0;
+  letter-spacing: 0.3px;
+}
+
+.copyCodeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #c0c0c0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.copyCodeBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.codePre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.codePre code {
+  font-family: inherit;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableBlock {
+  border: 1px solid var(--border-color, #e4e7ed);
+  padding: 6px 12px;
+}
+
+.tableBlock:first-child {
+  font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.blockquote {
+  margin: 0 0 0.8em 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border-color, #e4e7ed);
+  color: var(--text-regular, #606266);
+  font-style: italic;
+}
+
+.heading {
+  margin: 1em 0 0.5em 0;
+  font-weight: 600;
+  color: var(--text-primary, #303133);
+}
+
+.h2 {
+  font-size: 18px;
+}
+
+.h3 {
+  font-size: 16px;
+}
+
+.h4 {
+  font-size: 15px;
+}

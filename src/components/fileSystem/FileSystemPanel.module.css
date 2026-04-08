@@ -1,0 +1,221 @@
+.fileSystemPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #fafafa;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  gap: 12px;
+}
+
+.toolbarLeft {
+  display: flex;
+  gap: 6px;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+}
+
+.viewToggle {
+  display: flex;
+  gap: 4px;
+}
+
+/* Search Bar */
+.searchBar {
+  padding: 8px 12px;
+  background-color: #fff;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+/* Breadcrumb */
+.breadcrumbWrapper {
+  padding: 6px 12px;
+  background-color: #f4f5f7;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.breadcrumbLink {
+  color: #606266;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.breadcrumbLink:hover {
+  color: var(--primary-color);
+}
+
+/* Error Message */
+.errorMessage {
+  padding: 8px 12px;
+  background-color: #fef0f0;
+  color: #f56c6c;
+  font-size: 12px;
+  border-bottom: 1px solid #fde2e2;
+}
+
+/* Content Area */
+.contentArea {
+  flex: 1;
+  overflow: auto;
+  background-color: #fff;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* Tree View */
+.treeView {
+  padding: 8px;
+}
+
+.treeBackItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  transition: background-color 0.2s;
+}
+
+.treeBackItem:hover {
+  background-color: #f5f7fa;
+}
+
+.treeNodeTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nodeName {
+  font-size: 13px;
+}
+
+.folderIcon {
+  color: #e6a23c;
+}
+
+.fileIcon {
+  color: #909399;
+}
+
+.textFileIcon {
+  color: #409eff;
+}
+
+.imageFileIcon {
+  color: #67c23a;
+}
+
+.pdfFileIcon {
+  color: #f56c6c;
+}
+
+/* List View */
+.listView {
+  padding: 0;
+}
+
+.fileList {
+  display: flex;
+  flex-direction: column;
+}
+
+.fileListItem {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.fileListItem:hover {
+  background-color: #f5f7fa;
+}
+
+.fileListItem.selected {
+  background-color: #ecf5ff;
+}
+
+.fileItemIcon {
+  font-size: 24px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.fileItemIcon :global(.anticon) {
+  font-size: 24px;
+}
+
+.fileItemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.fileItemName {
+  font-size: 13px;
+  color: #303133;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileItemMeta {
+  font-size: 11px;
+  color: #909399;
+  margin-top: 2px;
+  display: flex;
+  gap: 12px;
+}
+
+.fileItemActions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.fileListItem:hover .fileItemActions {
+  opacity: 1;
+}
+
+/* Status Bar */
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: #f4f5f7;
+  border-top: 1px solid #e4e7ed;
+  font-size: 11px;
+  color: #909399;
+}
+
+.selectedPath {
+  color: var(--primary-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 50%;
+}

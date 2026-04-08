@@ -1,0 +1,106 @@
+.codeEditor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+}
+
+.fileName {
+  font-weight: 500;
+  font-size: 14px;
+  color: #303133;
+}
+
+.unsavedIndicator {
+  font-size: 12px;
+  color: #f56c6c;
+}
+
+.languageBadge {
+  font-size: 11px;
+  color: #606266;
+  background-color: #e4e7ed;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.readOnlyBadge {
+  font-size: 11px;
+  color: #909399;
+  background-color: #f4f4f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* 编辑器容器 */
+.editorContainer {
+  flex: 1;
+  overflow: hidden;
+  background-color: #fff;
+}
+
+/* 不可编辑文件提示 */
+.uneditableContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  background-color: #fafafa;
+}
+
+.uneditableIcon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.uneditableTitle {
+  font-size: 18px;
+  color: #303133;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.uneditableDesc {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* 底部状态栏 */
+.statusBar {
+  display: flex;
+  gap: 24px;
+  padding: 6px 16px;
+  background-color: #1e1e1e;
+  border-top: 1px solid #333;
+  font-size: 12px;
+  color: #858585;
+}

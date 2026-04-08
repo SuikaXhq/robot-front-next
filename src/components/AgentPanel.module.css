@@ -1,0 +1,373 @@
+.agentPanelCard {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  flex: 1;
+  min-height: 400px;
+}
+
+.isFullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  margin: 0;
+  border-radius: 0;
+  animation: panelFullscreenAppear 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+@keyframes panelFullscreenAppear {
+  0% { opacity: 0; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.agentTitle {
+  font-weight: bold;
+  font-size: 15px;
+  color: #303133;
+  padding: 0 8px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  flex-shrink: 0;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.independentTabsWrapper {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 4px;
+  max-height: 26px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.isExpanded {
+  max-height: 120px;
+}
+
+.independentTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.tabDropdownBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  color: #909399;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.tabDropdownBtn:hover {
+  background-color: #f4f5f7;
+  color: var(--primary-color);
+}
+
+.tabBtn {
+  padding: 0 12px;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tabBtn:hover {
+  color: var(--primary-color);
+  border-color: #c6e2ff;
+  background-color: #ecf5ff;
+}
+
+.tabBtnActive {
+  background-color: #fff;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  font-weight: 500;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+  height: 26px;
+}
+
+.actionIcon {
+  color: #909399;
+  cursor: pointer;
+  font-size: 16px;
+  transition: color 0.2s;
+}
+
+.actionIcon:hover {
+  color: var(--primary-color);
+}
+
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sequenceView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ROBOT TAB */
+.robotView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #fafafa;
+}
+
+.vncWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.vncHeader {
+  height: 40px;
+  background-color: #f4f5f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.vncTitle {
+  font-size: 14px;
+  color: #303133;
+  font-weight: bold;
+}
+
+.vncActions {
+  display: flex;
+  gap: 6px;
+}
+
+.vncBtn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.vncBody {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  flex-shrink: 0;
+  background-color: #0b80e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vncPlaceholder {
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  opacity: 0.5;
+  user-select: none;
+}
+
+/* Toolbar & Code */
+.panelToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.segmentedControl {
+  display: flex;
+  background-color: #f2f3f5;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.segTab {
+  font-size: 13px;
+  color: #909399;
+  cursor: pointer;
+  padding: 4px 16px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.segTabActive {
+  background-color: #ffffff;
+  color: var(--primary-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.codeContainer {
+  flex: 1;
+  background-color: #fafafa;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.mockEditor {
+  display: flex;
+  flex: 1;
+  overflow: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.lineNumbers {
+  padding: 16px 0;
+  background-color: #f0f2f5;
+  color: #b3b9c5;
+  text-align: right;
+  user-select: none;
+  border-right: 1px solid #e4e7ed;
+  min-width: 40px;
+}
+
+.lineNum {
+  padding: 0 10px;
+}
+
+.editorContent {
+  padding: 16px;
+  flex: 1;
+  color: #c7254e;
+  overflow-x: auto;
+}
+
+.editorContent pre {
+  margin: 0;
+}
+
+/* TERMINAL VIEW */
+.terminalShell {
+  flex: 1;
+  background-color: #1e1e1e;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.terminalHeader {
+  height: 28px;
+  background-color: #333;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 6px;
+}
+
+.termDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.red { background-color: #ff5f56; }
+.yellow { background-color: #ffbd2e; }
+.green { background-color: #27c93f; }
+
+.terminalTitle {
+  margin-left: 12px;
+  color: #a0a0a0;
+  font-size: 12px;
+  font-family: 'Consolas', monospace;
+}
+
+.terminalBody {
+  padding: 12px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  color: #d4d4d4;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.terminalBody p {
+  margin: 4px 0;
+}
+
+.prompt {
+  color: #8be9fd;
+  margin-right: 8px;
+}
+
+.logInfo {
+  color: #50fa7b;
+}
+
+.cursor {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* FILE SYSTEM TAB */
+.fileSystemView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+}

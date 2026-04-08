@@ -1,0 +1,178 @@
+.previewModal :global(.ant-modal-content) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+}
+
+.fileName {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.previewContent {
+  min-height: 300px;
+}
+
+/* 文本预览 */
+.textPreview {
+  background-color: #1e1e1e;
+  border-radius: 0;
+  overflow: auto;
+}
+
+.codeBlock {
+  display: flex;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.lineNumbers {
+  background-color: #252526;
+  color: #858585;
+  text-align: right;
+  padding: 12px 0;
+  user-select: none;
+  border-right: 1px solid #333;
+  min-width: 50px;
+}
+
+.lineNumber {
+  padding: 0 12px;
+}
+
+.codeContent {
+  flex: 1;
+  padding: 12px 16px;
+  margin: 0;
+  color: #d4d4d4;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* 图片预览 */
+.imagePreview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: 300px;
+}
+
+.imagePreview img {
+  max-width: 100%;
+  max-height: 500px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.imagePlaceholder {
+  text-align: center;
+  color: #909399;
+}
+
+.imagePlaceholder :global(.anticon) {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+/* PDF预览 */
+.pdfPreview {
+  width: 100%;
+  height: 500px;
+  background-color: #525659;
+}
+
+.pdfPreview iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.pdfPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #fff;
+}
+
+.pdfPlaceholder :global(.anticon) {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+/* 不支持的预览 */
+.unsupportedPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #909399;
+}
+
+.unsupportedIcon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.fileType {
+  color: #c0c4cc;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.fileTypeHint {
+  color: #909399;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* 加载中 */
+.loadingPreview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+/* 底部 */
+.modalFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.fileInfo {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #909399;
+}
+
+/* Markdown编辑器容器 */
+.markdownEditorWrapper,
+.editorWrapper {
+  height: 70vh;
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 确保编辑器内部撑满 */
+.markdownEditorWrapper > div,
+.editorWrapper > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

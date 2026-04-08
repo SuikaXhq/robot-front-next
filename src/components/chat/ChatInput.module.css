@@ -1,0 +1,259 @@
+.inputContainer {
+  padding: 8px 16px 16px;
+  background-color: var(--bg-color, #f2f3f5);
+  font-family: var(--font-family, sans-serif);
+}
+
+.inputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e4e7ed);
+  background-color: #ffffff;
+  padding: 12px;
+  transition: all 0.2s ease;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.inputWrapper:focus-within {
+  border-color: var(--primary-color, #409eff);
+  box-shadow: 0 0 0 1px var(--primary-color, #409eff);
+}
+
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  position: relative;
+}
+
+.textarea {
+  flex: 1;
+  resize: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-primary, #303133);
+  border: none;
+  outline: none;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.textarea::placeholder {
+  color: #a8abb2;
+}
+
+.textarea:disabled {
+  opacity: 0.5;
+}
+
+.actionButton,
+.attachButton {
+  display: flex;
+  height: 32px;
+  width: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s, color 0.2s;
+  font-size: 16px;
+}
+
+.attachButton {
+  background-color: transparent;
+  color: #909399;
+}
+
+.attachButton:hover:not(:disabled) {
+  background-color: #f2f3f5;
+  color: var(--text-primary, #303133);
+}
+
+.attachButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.interruptButton {
+  background-color: #f56c6c;
+  color: #ffffff;
+}
+
+.interruptButton:hover {
+  background-color: #f78989;
+}
+
+.sendButton {
+  background-color: #f4f4f5;
+  color: #303133;
+}
+
+.sendButton:not(.disabled):hover {
+  background-color: var(--border-color, #e4e7ed);
+}
+
+.sendButton.disabled {
+  cursor: not-allowed;
+  background-color: #f4f4f5;
+  color: #c0c4cc;
+}
+
+/* Attachments */
+.attachmentRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.attachmentItem {
+  position: relative;
+}
+
+.imageThumbWrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.imageThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.removeAttachmentBtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 0;
+}
+
+.removeAttachmentBtn:hover {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+.fileCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background-color: #f7f8fa;
+  border: 1px solid var(--border-color, #e4e7ed);
+  border-radius: 8px;
+  max-width: 220px;
+}
+
+.fileCardIcon {
+  font-size: 18px;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.fileCardInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.fileCardName {
+  font-size: 12px;
+  color: var(--text-primary, #303133);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileCardSize {
+  font-size: 11px;
+  color: #909399;
+}
+
+.removeAttachmentBtnInline {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background-color: transparent;
+  color: #909399;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.removeAttachmentBtnInline:hover {
+  background-color: #e4e7ed;
+  color: #606266;
+}
+
+/* Slash command popover */
+.commandPopover {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  width: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color, #e4e7ed);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+.commandItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.commandItem:hover,
+.commandItemSelected {
+  background-color: #f2f3f5;
+}
+
+.commandName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #303133);
+  flex-shrink: 0;
+}
+
+.commandDesc {
+  font-size: 12px;
+  color: var(--text-secondary, #909399);
+  text-align: right;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
