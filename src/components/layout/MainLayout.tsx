@@ -9,11 +9,13 @@ import { FileSystemProvider } from '@/contexts/FileSystemContext';
 
 interface MainLayoutProps {
   children: React.ReactNode | ((toggleSidebar: () => void, isSidebarOpen: boolean) => React.ReactNode);
+  /** 隐藏左侧边栏与右侧面板，让主内容占满整个下部区域 */
+  fullWidth?: boolean;
 }
 
-export default function MainLayout({ children }: MainLayoutProps) {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [isRightPanelOpen, setRightPanelOpen] = useState(true);
+export default function MainLayout({ children, fullWidth = false }: MainLayoutProps) {
+  const [isSidebarOpen, setSidebarOpen] = useState(!fullWidth);
+  const [isRightPanelOpen, setRightPanelOpen] = useState(!fullWidth);
   const [isFullscreen, setFullscreen] = useState(false);
   const [rightPanelWidth, setRightPanelWidth] = useState(480);
   const [isDragging, setIsDragging] = useState(false);
@@ -88,38 +90,42 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
 
         <div className={`${styles.mainContent} ${isFullscreen ? styles.isFullscreenMode : ''}`}>
-          <aside
-            className={`${styles.sidebarContainer} ${!isSidebarOpen || isFullscreen ? styles.sidebarClosed : ''}`}
-            style={{ width: isSidebarOpen && !isFullscreen ? 260 : 0 }}
-          >
-            {isSidebarOpen && <Sidebar />}
-          </aside>
+          {!fullWidth && (
+            <aside
+              className={`${styles.sidebarContainer} ${!isSidebarOpen || isFullscreen ? styles.sidebarClosed : ''}`}
+              style={{ width: isSidebarOpen && !isFullscreen ? 260 : 0 }}
+            >
+              {isSidebarOpen && <Sidebar />}
+            </aside>
+          )}
 
           <main className={styles.chatContainer}>
             {renderedChildren}
           </main>
 
-          <div className={styles.resizeHandle} onMouseDown={startDrag}>
-            <div className={styles.handleLine} />
-            <div className={styles.handleArrows}>
-              <span className={styles.arrowLeft} onClick={(e) => { e.stopPropagation(); expandRightPanel(); }} title="展开右侧面板">◀</span>
-              <span className={styles.arrowRight} onClick={(e) => { e.stopPropagation(); collapseRightPanel(); }} title="收起右侧面板">▶</span>
-            </div>
-          </div>
+          {!fullWidth && (
+            <>
+              <div className={styles.resizeHandle} onMouseDown={startDrag}>
+                <div className={styles.handleLine} />
+                <div className={styles.handleArrows}>
+                  <span className={styles.arrowLeft} onClick={(e) => { e.stopPropagation(); expandRightPanel(); }} title="展开右侧面板">◀</span>
+                  <span className={styles.arrowRight} onClick={(e) => { e.stopPropagation(); collapseRightPanel(); }} title="收起右侧面板">▶</span>
+                </div>
+              </div>
 
-          {/* Spacer */}
-          <div
-            className={`${styles.panelSpacer} ${!isRightPanelOpen ? styles.panelClosed : ''} ${isDragging ? styles.isDragging : ''}`}
-            style={{ width: isRightPanelOpen ? rightPanelWidth : 0 }}
-          />
+              <div
+                className={`${styles.panelSpacer} ${!isRightPanelOpen ? styles.panelClosed : ''} ${isDragging ? styles.isDragging : ''}`}
+                style={{ width: isRightPanelOpen ? rightPanelWidth : 0 }}
+              />
 
-          {/* Absolute Panel */}
-          <aside
-            className={`${styles.absolutePanel} ${styles.panelContainer} ${!isRightPanelOpen && !isFullscreen ? styles.panelClosed : ''} ${isDragging ? styles.isDragging : ''} ${isFullscreen ? styles.isFullscreen : ''}`}
-            style={{ width: isFullscreen ? 'calc(100% - 48px)' : isRightPanelOpen ? rightPanelWidth : 0 }}
-          >
-            {(isRightPanelOpen || isFullscreen) && <RightPanel />}
-          </aside>
+              <aside
+                className={`${styles.absolutePanel} ${styles.panelContainer} ${!isRightPanelOpen && !isFullscreen ? styles.panelClosed : ''} ${isDragging ? styles.isDragging : ''} ${isFullscreen ? styles.isFullscreen : ''}`}
+                style={{ width: isFullscreen ? 'calc(100% - 48px)' : isRightPanelOpen ? rightPanelWidth : 0 }}
+              >
+                {(isRightPanelOpen || isFullscreen) && <RightPanel />}
+              </aside>
+            </>
+          )}
         </div>
       </div>
     </FileSystemProvider>

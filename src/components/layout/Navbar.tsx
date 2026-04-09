@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import styles from './Navbar.module.css';
 import {
   DesktopOutlined,
@@ -12,15 +14,17 @@ import {
 } from '@ant-design/icons';
 import { Avatar } from 'antd';
 
+const navItems = [
+  { icon: <DesktopOutlined />, label: '首页', href: '/' },
+  { icon: <AppstoreOutlined />, label: '应用广场', href: '#' },
+  { icon: <ExperimentOutlined />, label: '实验室', href: '/chat' },
+  { icon: <RobotOutlined />, label: '模型中心', href: '#' },
+  { icon: <ToolOutlined />, label: '技能平台', href: '/skills' },
+  { icon: <DatabaseOutlined />, label: '数据集货架', href: '#' },
+];
+
 export default function Navbar() {
-  const navItems = [
-    { icon: <DesktopOutlined />, label: '首页' },
-    { icon: <AppstoreOutlined />, label: '应用广场' },
-    { icon: <ExperimentOutlined />, label: '实验室', active: true },
-    { icon: <RobotOutlined />, label: '模型中心' },
-    { icon: <ToolOutlined />, label: '工具' },
-    { icon: <DatabaseOutlined />, label: '数据集货架' },
-  ];
+  const pathname = usePathname();
 
   return (
     <div className={styles.navbar}>
@@ -32,15 +36,28 @@ export default function Navbar() {
       </div>
 
       <div className={styles.navLinks}>
-        {navItems.map((item, i) => (
-          <span
-            key={i}
-            className={`${styles.navBtn} ${item.active ? styles.activeBtn : ''}`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </span>
-        ))}
+        {navItems.map((item, i) => {
+          const isActive =
+            pathname === item.href || (item.href !== '#' && pathname.startsWith(item.href));
+          return item.href === '#' ? (
+            <span
+              key={i}
+              className={`${styles.navBtn} ${isActive ? styles.activeBtn : ''}`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </span>
+          ) : (
+            <Link
+              key={i}
+              href={item.href}
+              className={`${styles.navBtn} ${isActive ? styles.activeBtn : ''}`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
 
       <div className={styles.userArea}>

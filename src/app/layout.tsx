@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AntdRegistry } from '@ant-design/nextjs-registry';
+import { ChatSessionProvider } from '@/contexts/ChatSessionContext';
 
 export const metadata: Metadata = {
   title: "robotfront - 云上 OpenLab AI 集成平台",
@@ -15,7 +16,11 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <AntdRegistry>{children}</AntdRegistry>
+        <AntdRegistry>
+          <ChatSessionProvider>
+            {children}
+          </ChatSessionProvider>
+        </AntdRegistry>
       </body>
     </html>
   );
