@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "dev:bridge": "tsx src/server/claude-bridge.ts",
     "dev:all": "concurrently \"npm run dev:bridge\" \"npm run dev\"",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "start:prod": "concurrently \"npx tsx src/server/claude-bridge.ts\" \"next start\"",
     "lint": "eslint"
