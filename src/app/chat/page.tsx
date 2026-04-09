@@ -1,11 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import ChatArea from '@/components/ChatArea';
 import type { SkillPayload } from '@/config/skills';
 
-export default function ChatPage() {
+function ChatPageInner() {
   const searchParams = useSearchParams();
 
   const initialSkill: SkillPayload | undefined =
@@ -35,5 +36,17 @@ export default function ChatPage() {
         />
       )}
     </MainLayout>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <MainLayout>
+        <div style={{ padding: 40, textAlign: 'center' }}>加载中...</div>
+      </MainLayout>
+    }>
+      <ChatPageInner />
+    </Suspense>
   );
 }
