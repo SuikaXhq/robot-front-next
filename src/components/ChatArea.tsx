@@ -15,6 +15,7 @@ import ChatMessagesPane from './chat/ChatMessagesPane';
 import { ChatInput } from './chat/ChatInput';
 import { claudeBridge, type StreamEvent } from '@/services/claudeBridgeClient';
 import { useChatSessions } from '@/contexts/ChatSessionContext';
+import type { SkillPayload } from '@/config/skills';
 
 const taskTreeData = [
   { title: '进入URL', key: '1' },
@@ -34,9 +35,11 @@ const taskTreeData = [
 
 interface ChatAreaProps {
   onToggleSidebar: () => void;
+  /** 从 Skills 平台带入的初始 Skill */
+  initialSkill?: SkillPayload;
 }
 
-export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
+export default function ChatArea({ onToggleSidebar, initialSkill }: ChatAreaProps) {
   const [isTaskExpanded, setIsTaskExpanded] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const contentBlocksRef = useRef<ChatMessage[]>([]);
@@ -89,6 +92,25 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
     claudeBridge.closeSession();
     claudeBridge.startSession({ dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current });
   }, [currentSessionId, isBridgeReady]);
+
+  // Auto-send skill prompt from Skills platform when session is ready
+  const initialSkillProcessedRef = useRef(false);
+  useEffect(() => {
+    if (!isSessionReady || !initialSkill?.prompt || initialSkillProcessedRef.current) return;
+    initialSkillProcessedRef.current = true;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: 'assistant',
+        content: `已加载技能「${initialSkill.name}」，正在初始化...`,
+        timestamp: new Date().toISOString(),
+      } as ChatMessage,
+    ]);
+
+    claudeBridge.sendMessage(initialSkill.prompt);
+    setIsStreaming(true);
+  }, [isSessionReady, initialSkill]);
 
   const handleEvent = useCallback((event: StreamEvent) => {
     switch (event.type) {
