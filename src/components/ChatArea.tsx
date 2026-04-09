@@ -684,7 +684,23 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
                 <input
                   type="checkbox"
                   checked={dangerouslySkipPermissions}
-                  onChange={(e) => setDangerouslySkipPermissions(e.target.checked)}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setDangerouslySkipPermissions(next);
+                    dangerouslySkipPermissionsRef.current = next;
+                    if (claudeBridge.isConnected() && isSessionReady) {
+                      setMessages((prev) => [
+                        ...prev,
+                        {
+                          type: 'assistant',
+                          content: `已${next ? '开启' : '关闭'}跳过权限确认，正在自动重启会话以应用设置...`,
+                          timestamp: new Date().toISOString(),
+                        } as ChatMessage,
+                      ]);
+                      claudeBridge.closeSession();
+                      claudeBridge.startSession({ dangerouslySkipPermissions: next });
+                    }
+                  }}
                 />
                 <span>跳过权限确认（自动允许所有操作）</span>
               </label>

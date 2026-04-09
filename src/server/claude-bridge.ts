@@ -45,6 +45,7 @@ function buildClaudeArgs(options: { sessionId?: string; dangerouslySkipPermissio
   }
   if (options.dangerouslySkipPermissions) {
     args.push("--dangerously-skip-permissions");
+    args.push("--permission-mode", "bypassPermissions");
   }
   if (options.allowedDirs && options.allowedDirs.length > 0) {
     args.push("--add-dir", ...options.allowedDirs);
