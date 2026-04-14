@@ -7,6 +7,7 @@ export interface TerminalPaneRef {
   write(data: string): void;
   clear(): void;
   resize(): void;
+  getSize(): { cols: number; rows: number } | null;
 }
 
 interface TerminalPaneProps {
@@ -99,6 +100,11 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
       } catch {
         // ignore
       }
+    },
+    getSize() {
+      const term = termRef.current;
+      if (!term) return null;
+      return { cols: term.cols || 80, rows: term.rows || 24 };
     },
   }));
 

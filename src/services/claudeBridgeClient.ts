@@ -229,6 +229,11 @@ export class ClaudeBridgeClient {
     this.send({ type: 'terminal.input', data });
   }
 
+  sendTerminalResize(cols: number, rows: number): void {
+    if (!this.ensureConnected()) return;
+    this.send({ type: 'terminal.resize', cols, rows });
+  }
+
   setCallbacks(callbacks: BridgeCallbacks): void {
     this.callbacks = { ...this.callbacks, ...callbacks };
   }

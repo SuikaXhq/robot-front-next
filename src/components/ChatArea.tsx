@@ -52,6 +52,7 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
 
   const [mode, setMode] = useState<'chat' | 'terminal'>('chat');
   const terminalPaneRef = useRef<TerminalPaneRef>(null);
+  const terminalBufferRef = useRef<string>('');
 
   const {
     currentSession,
@@ -348,11 +349,24 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       },
       onTerminalData: (data) => {
         terminalPaneRef.current?.write(data);
+        terminalBufferRef.current += data;
+        if (terminalBufferRef.current.length > 10000) {
+          terminalBufferRef.current = terminalBufferRef.current.slice(-10000);
+        }
       },
       onSessionStarted: (_, startedMode) => {
         setIsSessionReady(true);
         if (startedMode === 'terminal') {
           terminalPaneRef.current?.clear();
+          terminalBufferRef.current = '';
+          // Sync terminal size after a short delay so xterm has finished fitting
+          setTimeout(() => {
+            terminalPaneRef.current?.resize();
+            const size = terminalPaneRef.current?.getSize();
+            if (size) {
+              claudeBridge.sendTerminalResize(size.cols, size.rows);
+            }
+          }, 100);
         }
       },
       onSessionEnded: () => {
@@ -365,6 +379,102 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       claudeBridge.disconnect();
     };
   }, [handleEvent]);
+
+  // Sync terminal size to PTY on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (mode !== 'terminal') return;
+      terminalPaneRef.current?.resize();
+      const size = terminalPaneRef.current?.getSize();
+      if (size) {
+        claudeBridge.sendTerminalResize(size.cols, size.rows);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [mode]);
+
+  function stripAnsi(str: string): string {
+    // eslint-disable-next-line no-control-regex
+    return str.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+  }
+
+  function translateTerminalInput(content: string, terminalBuffer: string): { input: string; echo: string } | null {
+    const trimmed = content.trim();
+    if (!trimmed) return null;
+
+    const lower = trimmed.toLowerCase();
+    const cleanBuffer = stripAnsi(terminalBuffer);
+    const recentLines = cleanBuffer.split('\n').slice(-30);
+
+    const chineseNumbers: Record<string, string> = {
+      '一': '1', '二': '2', '三': '3', '四': '4', '五': '5',
+      '六': '6', '七': '7', '八': '8', '九': '9', '十': '10',
+    };
+
+    // Yes / No detection
+    const yesWords = ['yes', 'y', '是', '确定', '确认', 'ok', '好', '同意'];
+    const noWords = ['no', 'n', '否', '不', '取消', 'cancel', '不同意'];
+
+    if (yesWords.includes(lower)) {
+      // Claude CLI menu: the cursor (>) is usually on the first "Yes" option.
+      // Send Enter to confirm the current selection.
+      return { input: '\r', echo: trimmed };
+    }
+    if (noWords.includes(lower)) {
+      // Send Esc to cancel the prompt (Claude menus show "Esc to cancel").
+      return { input: '\x1B', echo: trimmed };
+    }
+
+    // Numbered choice detection
+    const numberMatch = lower.match(
+      /^(?:第\s*([一二三四五六七八九十0-9]+)\s*(?:个|项|条|选择)?|选\s*项?\s*([0-9]+)|选项\s*([0-9]+)|([0-9]+))$/
+    );
+    if (numberMatch) {
+      let num = numberMatch[1] || numberMatch[2] || numberMatch[3] || numberMatch[4];
+      if (num && chineseNumbers[num]) {
+        num = chineseNumbers[num];
+      }
+      const targetIndex = parseInt(num, 10);
+      if (Number.isNaN(targetIndex)) return null;
+
+      // Detect Claude CLI menus by helper text or explicit option lines
+      const hasMenuHints = recentLines.some((line) =>
+        /Esc to cancel|Tab to amend|Do you want to proceed|choose|select|option/i.test(line)
+      );
+
+      const optionLines = recentLines.filter((line) =>
+        /^\s*[>◆●○❯\-\*]?\s*\d+[.):】\s]/.test(line)
+      );
+
+      if (hasMenuHints || optionLines.length >= 2) {
+        // Find current cursor position from lines starting with ">"
+        let currentIndex = 1;
+        for (const line of optionLines) {
+          const m = line.match(/^\s*>(?:\s*(\d+))?/);
+          if (m) {
+            if (m[1]) {
+              currentIndex = parseInt(m[1], 10);
+            }
+            break;
+          }
+        }
+        const diff = targetIndex - currentIndex;
+        let arrows = '';
+        if (diff > 0) {
+          arrows = '\x1B[B'.repeat(diff); // Down arrow
+        } else if (diff < 0) {
+          arrows = '\x1B[A'.repeat(-diff); // Up arrow
+        }
+        return { input: `${arrows}\r`, echo: num };
+      }
+
+      // Fallback: direct number input
+      return { input: `${num}\r`, echo: num };
+    }
+
+    return null;
+  }
 
   const handleCommand = (raw: string): boolean => {
     const trimmed = raw.trim();
@@ -487,9 +597,12 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
         ]);
         return;
       }
-      // Echo typed text into terminal for visibility
-      terminalPaneRef.current?.write(content + '\r\n');
-      claudeBridge.sendMessage(content);
+      const translation = translateTerminalInput(content, terminalBufferRef.current);
+      if (translation) {
+        claudeBridge.sendTerminalInput(translation.input);
+      } else {
+        claudeBridge.sendMessage(content);
+      }
       return;
     }
 

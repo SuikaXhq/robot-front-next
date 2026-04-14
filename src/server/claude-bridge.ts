@@ -482,6 +482,19 @@ function sendTerminalInput(session: ClientSession, data: string): boolean {
   return true;
 }
 
+function sendTerminalResize(session: ClientSession, cols: number, rows: number): boolean {
+  const run = session.run;
+  if (!run || run.status !== "running" || run.mode !== "terminal" || !run.pty) {
+    return false;
+  }
+  try {
+    run.pty.resize(cols, rows);
+  } catch {
+    return false;
+  }
+  return true;
+}
+
 // =============================================================================
 // 控制与清理函数
 // =============================================================================
@@ -664,6 +677,22 @@ wss.on("connection", (socket) => {
         const ok = sendTerminalInput(session, message.data || "");
         if (!ok) {
           socket.send(JSON.stringify({ type: "error", message: "Failed to send terminal input" }));
+        }
+        break;
+      }
+
+      // -----------------------------------------------------------------------
+      // terminal.resize: 前端终端尺寸变化（仅 terminal 模式）
+      // -----------------------------------------------------------------------
+      case "terminal.resize": {
+        const activeRun = session.run;
+        if (!activeRun || activeRun.status !== "running") {
+          socket.send(JSON.stringify({ type: "error", message: "No active claude session. Start a session first." }));
+          return;
+        }
+        const ok = sendTerminalResize(session, Number(message.cols) || 80, Number(message.rows) || 24);
+        if (!ok) {
+          socket.send(JSON.stringify({ type: "error", message: "Failed to resize terminal" }));
         }
         break;
       }
