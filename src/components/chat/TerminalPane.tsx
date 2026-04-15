@@ -19,6 +19,7 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
   const termRef = useRef<any>(null);
   const fitAddonRef = useRef<any>(null);
   const onDataRef = useRef(onData);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
     onDataRef.current = onData;
@@ -60,23 +61,46 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
       termRef.current = term;
       fitAddonRef.current = fitAddon;
 
-      const handleResize = () => {
+      const doFit = () => {
+        if (!termRef.current || !fitAddonRef.current || !containerRef.current) return;
         try {
-          fitAddon.fit();
+          // 让 xterm 元素跟随容器伸缩，防止 CSS 固定后无法自适应
+          if (termRef.current.element) {
+            termRef.current.element.style.width = '100%';
+            termRef.current.element.style.height = '100%';
+          }
+          fitAddonRef.current.fit();
+          termRef.current.refresh(0, termRef.current.rows - 1);
         } catch {
           // ignore
         }
       };
 
+      const handleResize = () => {
+        requestAnimationFrame(() => {
+          doFit();
+          // 手动触发 window resize，让 xterm 内部 renderer 完成真正的重绘/重排
+          window.dispatchEvent(new Event('resize'));
+        });
+      };
+
       window.addEventListener('resize', handleResize);
+
+      const resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(containerRef.current);
+      resizeObserverRef.current = resizeObserver;
 
       return () => {
         window.removeEventListener('resize', handleResize);
+        resizeObserver.disconnect();
       };
     });
 
     return () => {
       disposed = true;
+      resizeObserverRef.current?.disconnect();
       try {
         termRef.current?.dispose?.();
       } catch {

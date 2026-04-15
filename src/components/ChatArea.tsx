@@ -412,18 +412,27 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       '六': '6', '七': '7', '八': '8', '九': '9', '十': '10',
     };
 
-    // Yes / No detection
+    // Yes / No detection — only translate when the terminal actually shows a menu
     const yesWords = ['yes', 'y', '是', '确定', '确认', 'ok', '好', '同意'];
     const noWords = ['no', 'n', '否', '不', '取消', 'cancel', '不同意'];
 
-    if (yesWords.includes(lower)) {
-      // Claude CLI menu: the cursor (>) is usually on the first "Yes" option.
-      // Send Enter to confirm the current selection.
-      return { input: '\r', echo: trimmed };
-    }
-    if (noWords.includes(lower)) {
-      // Send Esc to cancel the prompt (Claude menus show "Esc to cancel").
-      return { input: '\x1B', echo: trimmed };
+    const hasExplicitYn = recentLines.some((line) =>
+      /\[y\/n\]|\(y\/n\)|yes\s*[\/／]\s*no|是\s*[\/／]\s*否/i.test(line)
+    );
+    // 允许前面带数字编号（如 1. Yes）以及光标符号
+    const hasYesOption = recentLines.some((line) =>
+      /^\s*[>◆●○❯\-\*]?\s*(?:\d+[.):】\s]+)?yes\b/i.test(line)
+    );
+    const hasNoOption = recentLines.some((line) =>
+      /^\s*[>◆●○❯\-\*]?\s*(?:\d+[.):】\s]+)?no\b/i.test(line)
+    );
+    const hasMenuHint = recentLines.some((line) =>
+      /Esc to cancel|Tab to amend|Do you want to proceed|choose|select|proceed|cancel/i.test(line)
+    );
+
+    if (hasExplicitYn || hasMenuHint || (hasYesOption && hasNoOption)) {
+      if (yesWords.includes(lower)) return { input: '\r', echo: trimmed };
+      if (noWords.includes(lower)) return { input: '\x1B', echo: trimmed };
     }
 
     // Numbered choice detection
@@ -585,6 +594,8 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
   };
 
   const handleSendMessage = (content: string, attachments?: ChatAttachment[]) => {
+    // eslint-disable-next-line no-console
+    console.log('[handleSendMessage] mode=', mode, 'content=', JSON.stringify(content), 'attachments=', attachments?.length);
     if (mode === 'terminal') {
       if (!claudeBridge.isConnected()) {
         setMessages((prev) => [
@@ -598,6 +609,8 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
         return;
       }
       const translation = translateTerminalInput(content, terminalBufferRef.current);
+      // eslint-disable-next-line no-console
+      console.log('[handleSendMessage] translation=', translation);
       if (translation) {
         claudeBridge.sendTerminalInput(translation.input);
       } else {

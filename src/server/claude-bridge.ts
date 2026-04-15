@@ -346,6 +346,7 @@ function spawnClaude(session: ClientSession, options: {
       if (run.status !== "running") return;
       const text = data.toString().trim();
       if (text) {
+        console.log(text)
         run.buffer.push(JSON.stringify({ type: "error", runId, message: text }) + "\n");
         if (session.socket.readyState === WebSocket.OPEN) {
           session.socket.send(JSON.stringify({ type: "error", runId, message: text }));
@@ -396,12 +397,24 @@ function spawnClaude(session: ClientSession, options: {
  *     { type: "user", message: { role: "user", content } }
  *   然后写入子进程 stdin，末尾加换行符。
  */
+const lastSentRef = { content: "", time: 0 };
+
 function sendToClaude(session: ClientSession, content: string): boolean {
   const run = session.run;
   if (!run || run.status !== "running") {
     return false;
   }
+  // 简单去重：300ms 内相同内容直接忽略，防止前端 IME/事件重复导致多发
+  const now = Date.now();
+  if (content === lastSentRef.content && now - lastSentRef.time < 300) {
+    console.log("[claude-bridge] sendToClaude dedup skipped:", JSON.stringify(content));
+    return true;
+  }
+  lastSentRef.content = content;
+  lastSentRef.time = now;
+
   if (run.mode === "terminal" && run.pty) {
+    console.log("[claude-bridge] sendToClaude terminal writing:", JSON.stringify(content + "\r"));
     run.pty.write(content + "\r");
     return true;
   }
@@ -478,6 +491,7 @@ function sendTerminalInput(session: ClientSession, data: string): boolean {
   if (!run || run.status !== "running" || run.mode !== "terminal" || !run.pty) {
     return false;
   }
+  console.log("[claude-bridge] sendTerminalInput writing:", JSON.stringify(data));
   run.pty.write(data);
   return true;
 }

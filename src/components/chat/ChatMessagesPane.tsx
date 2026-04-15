@@ -5,6 +5,7 @@ import type { ChatMessage, SessionProvider } from './types';
 import ClaudeMessage from './ClaudeMessage';
 import AssistantThinkingIndicator from './AssistantThinkingIndicator';
 import styles from './ChatMessagesPane.module.css';
+import { log } from 'console';
 
 interface ChatMessagesPaneProps {
   chatMessages: ChatMessage[];
@@ -31,6 +32,7 @@ export default function ChatMessagesPane({
   const messageKeyMapRef = useRef<WeakMap<ChatMessage, string>>(new WeakMap());
   const allocatedKeysRef = useRef<Set<string>>(new Set());
   const generatedCounterRef = useRef(0);
+  // console.log('11111111111111111',chatMessages)
 
   useEffect(() => {
     const el = scrollContainerRef.current;
