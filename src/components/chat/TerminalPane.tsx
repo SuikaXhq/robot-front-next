@@ -26,6 +26,24 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
   }, [onData]);
 
   useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .xterm .xterm-helper-textarea {
+        position: absolute !important;
+        opacity: 0 !important;
+        left: 0 !important;
+        top: 0 !important;
+        z-index: -10 !important;
+        pointer-events: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
 
     let disposed = false;

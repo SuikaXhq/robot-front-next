@@ -44,7 +44,7 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
   const [isBridgeReady, setIsBridgeReady] = useState(false);
   const [isSessionReady, setIsSessionReady] = useState(false);
   const pendingSessionIdRef = useRef<string | null>(null);
-  const [dangerouslySkipPermissions, setDangerouslySkipPermissions] = useState(false);
+  const [dangerouslySkipPermissions, setDangerouslySkipPermissions] = useState(true);
   const dangerouslySkipPermissionsRef = useRef(dangerouslySkipPermissions);
   useEffect(() => {
     dangerouslySkipPermissionsRef.current = dangerouslySkipPermissions;
@@ -717,9 +717,53 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       <div className={styles.chatHeader}>
         <LayoutOutlined className={styles.toggleIcon} onClick={onToggleSidebar} />
         <div className={styles.tabs}>
-          <span className={`${styles.tab} ${styles.tabActive}`}>执行状态</span>
-          <span className={styles.tab}>执行记录</span>
+          <span
+            className={`${styles.tab} ${mode === 'chat' ? styles.tabActive : ''}`}
+            onClick={() => setMode('chat')}
+          >
+            Chat
+          </span>
+          <span
+            className={`${styles.tab} ${mode === 'terminal' ? styles.tabActive : ''}`}
+            onClick={() => setMode('terminal')}
+          >
+            Terminal
+          </span>
         </div>
+        <label
+          style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            cursor: 'pointer',
+            fontSize: 13,
+            color: '#606266',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={!dangerouslySkipPermissions}
+            onChange={(e) => {
+              const next = !e.target.checked;
+              setDangerouslySkipPermissions(next);
+              dangerouslySkipPermissionsRef.current = next;
+              if (claudeBridge.isConnected() && isSessionReady) {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    type: 'assistant',
+                    content: `已${next ? '关闭' : '开启'}安全模式，正在自动重启会话以应用设置...`,
+                    timestamp: new Date().toISOString(),
+                  } as ChatMessage,
+                ]);
+                claudeBridge.closeSession();
+                claudeBridge.startSession({ dangerouslySkipPermissions: next, mode });
+              }
+            }}
+          />
+          <span>打开安全模式</span>
+        </label>
       </div>
 
       <div className={styles.messagesContainer}>
@@ -751,108 +795,73 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
         )}
       </div>
 
-      <div className={styles.chatFooter}>
-        <div className={styles.advancedInputArea}>
+      {mode !== 'terminal' && (
+        <div className={styles.chatFooter}>
+          <div className={styles.advancedInputArea}>
 
-          <div className={styles.advancedInputPanel}>
-            <div className={styles.envSelectorWrapper}>
-              <Select
-                defaultValue="env1"
-                style={{ width: 130 }}
-                options={[
-                  { value: 'env1', label: '行解场景1' },
-                  { value: 'env2', label: '行解场景2' },
-                ]}
-              />
-              <span className={styles.eqIcon}>≈</span>
-              <Select
-                defaultValue="ip1"
-                style={{ width: 140 }}
-                options={[{ value: 'ip1', label: '7.213.211.12' }]}
-              />
-              <CaretRightOutlined className={styles.playBtn} />
-            </div>
-
-            <div className={styles.taskManagementWrapper}>
-              <div className={styles.taskPanelHeader} onClick={() => setIsTaskExpanded(!isTaskExpanded)}>
-                <div className={styles.taskPanelTitle}>
-                  <SettingOutlined style={{ marginRight: 6 }} /> 任务管理
-                </div>
-                {isTaskExpanded ? <DownOutlined style={{ fontSize: 12, color: '#909399' }} /> : <UpOutlined style={{ fontSize: 12, color: '#909399' }} />}
-              </div>
-              {isTaskExpanded && (
-                <div className={styles.taskBody}>
-                  <Tree
-                    checkable
-                    defaultExpandAll
-                    treeData={taskTreeData}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div style={{ marginTop: 8, fontSize: 12, color: '#606266', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={dangerouslySkipPermissions}
-                  onChange={(e) => {
-                    const next = e.target.checked;
-                    setDangerouslySkipPermissions(next);
-                    dangerouslySkipPermissionsRef.current = next;
-                    if (claudeBridge.isConnected() && isSessionReady) {
-                      setMessages((prev) => [
-                        ...prev,
-                        {
-                          type: 'assistant',
-                          content: `已${next ? '开启' : '关闭'}跳过权限确认，正在自动重启会话以应用设置...`,
-                          timestamp: new Date().toISOString(),
-                        } as ChatMessage,
-                      ]);
-                      claudeBridge.closeSession();
-                      claudeBridge.startSession({ dangerouslySkipPermissions: next, mode });
-                    }
-                  }}
+            <div className={styles.advancedInputPanel}>
+              <div className={styles.envSelectorWrapper}>
+                <Select
+                  defaultValue="env1"
+                  style={{ width: 130 }}
+                  options={[
+                    { value: 'env1', label: '行解场景1' },
+                    { value: 'env2', label: '行解场景2' },
+                  ]}
                 />
-                <span>跳过权限确认（自动允许所有操作）</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                <span>模式:</span>
-                <select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as 'chat' | 'terminal')}
-                  style={{ fontSize: 12, padding: '2px 6px', borderRadius: 4, border: '1px solid #dcdfe6' }}
-                >
-                  <option value="chat">Chat (JSON 流)</option>
-                  <option value="terminal">Terminal (PTY 原生交互)</option>
-                </select>
-              </label>
+                <span className={styles.eqIcon}>≈</span>
+                <Select
+                  defaultValue="ip1"
+                  style={{ width: 140 }}
+                  options={[{ value: 'ip1', label: '7.213.211.12' }]}
+                />
+                <CaretRightOutlined className={styles.playBtn} />
+              </div>
+
+              <div className={styles.taskManagementWrapper}>
+                <div className={styles.taskPanelHeader} onClick={() => setIsTaskExpanded(!isTaskExpanded)}>
+                  <div className={styles.taskPanelTitle}>
+                    <SettingOutlined style={{ marginRight: 6 }} /> 任务管理
+                  </div>
+                  {isTaskExpanded ? <DownOutlined style={{ fontSize: 12, color: '#909399' }} /> : <UpOutlined style={{ fontSize: 12, color: '#909399' }} />}
+                </div>
+                {isTaskExpanded && (
+                  <div className={styles.taskBody}>
+                    <Tree
+                      checkable
+                      defaultExpandAll
+                      treeData={taskTreeData}
+                    />
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            <div className={styles.chatInputWrapper}>
+              <ChatInput
+                onSend={handleSendMessage}
+                onInterrupt={handleInterrupt}
+                onUpload={handleUpload}
+                sessions={sessions}
+                isProcessing={isStreaming}
+                disabled={!isBridgeReady || !isSessionReady}
+                placeholder={
+                  !isBridgeReady
+                    ? "等待桥接服务连接..."
+                    : !isSessionReady
+                    ? "正在启动 Claude 会话..."
+                    : "描述下您想执行怎样的测试任务？如：在71.14.16.144上，测试大数据spark性能"
+                }
+              />
             </div>
           </div>
 
-          <div className={styles.chatInputWrapper}>
-            <ChatInput
-              onSend={handleSendMessage}
-              onInterrupt={handleInterrupt}
-              onUpload={handleUpload}
-              sessions={sessions}
-              isProcessing={isStreaming}
-              disabled={!isBridgeReady || !isSessionReady}
-              placeholder={
-                !isBridgeReady
-                  ? "等待桥接服务连接..."
-                  : !isSessionReady
-                  ? "正在启动 Claude 会话..."
-                  : "描述下您想执行怎样的测试任务？如：在71.14.16.144上，测试大数据spark性能"
-              }
-            />
+          <div className={styles.footerHint}>
+            内容由AI生成，无法确保准确性和完整性，仅供参考 | 使用条款 隐私声明
           </div>
         </div>
-
-        <div className={styles.footerHint}>
-          内容由AI生成，无法确保准确性和完整性，仅供参考 | 使用条款 隐私声明
-        </div>
-      </div>
+      )}
     </div>
   );
 }
