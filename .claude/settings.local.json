@@ -28,7 +28,13 @@
       "Bash(git commit -m ':*)",
       "Bash(git checkout:*)",
       "Bash(npm ls:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(wmic cpu *)",
+      "Bash(wmic memorychip *)",
+      "Bash(wmic diskdrive *)",
+      "Bash(wmic path *)",
+      "Bash(nvidia-smi *)",
+      "WebSearch"
     ]
   }
 }

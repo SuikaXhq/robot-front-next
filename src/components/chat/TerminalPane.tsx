@@ -12,18 +12,25 @@ export interface TerminalPaneRef {
 
 interface TerminalPaneProps {
   onData?(data: string): void;
+  onReady?(): void;
 }
 
-const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData }, ref) => {
+const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData, onReady }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<any>(null);
   const fitAddonRef = useRef<any>(null);
   const onDataRef = useRef(onData);
+  const onReadyRef = useRef(onReady);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const resizeHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     onDataRef.current = onData;
   }, [onData]);
+
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -59,10 +66,26 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
         fontSize: 13,
         fontFamily: 'Consolas, "Courier New", monospace',
         theme: {
-          background: '#ffffff',
-          foreground: '#1f2328',
-          cursor: '#0969da',
-          selectionBackground: '#b4d5ff',
+          background: '#fafbfc',
+          foreground: '#1a1a2e',
+          cursor: '#ff2d55',
+          selectionBackground: '#ff2d5526',
+          black: '#1a1a2e',
+          red: '#e71d36',
+          green: '#2ec4b6',
+          yellow: '#f77f00',
+          blue: '#3a86ff',
+          magenta: '#8338ec',
+          cyan: '#06d6a0',
+          white: '#5c677d',
+          brightBlack: '#9baacf',
+          brightRed: '#ff4d6d',
+          brightGreen: '#72efdd',
+          brightYellow: '#ff9f1c',
+          brightBlue: '#4895ef',
+          brightMagenta: '#b5179e',
+          brightCyan: '#4cc9f0',
+          brightWhite: '#1a1a2e',
         },
         convertEol: true,
       });
@@ -70,7 +93,6 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
       term.open(containerRef.current);
-      fitAddon.fit();
 
       term.onData((data: string) => {
         onDataRef.current?.(data);
@@ -102,6 +124,7 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
         });
       };
 
+      resizeHandlerRef.current = handleResize;
       window.addEventListener('resize', handleResize);
 
       const resizeObserver = new ResizeObserver(() => {
@@ -110,15 +133,23 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
       resizeObserver.observe(containerRef.current);
       resizeObserverRef.current = resizeObserver;
 
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        resizeObserver.disconnect();
-      };
+      // 延迟到下一帧再 fit，确保容器尺寸已稳定
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          doFit();
+          onReadyRef.current?.();
+        }, 0);
+      });
     });
 
     return () => {
       disposed = true;
+      if (resizeHandlerRef.current) {
+        window.removeEventListener('resize', resizeHandlerRef.current);
+        resizeHandlerRef.current = null;
+      }
       resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       try {
         termRef.current?.dispose?.();
       } catch {
@@ -155,9 +186,9 @@ const TerminalPane = forwardRef<TerminalPaneRef, TerminalPaneProps>(({ onData },
       ref={containerRef}
       style={{
         width: '100%',
-        height: '100%',
+        flex: 1,
         padding: 12,
-        background: '#ffffff',
+        background: '#fafbfc',
         overflow: 'hidden',
       }}
     />

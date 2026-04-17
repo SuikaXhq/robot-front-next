@@ -768,7 +768,17 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
 
       <div className={styles.messagesContainer}>
         {mode === 'terminal' ? (
-          <TerminalPane ref={terminalPaneRef} onData={(data) => claudeBridge.sendTerminalInput(data)} />
+          <TerminalPane
+            ref={terminalPaneRef}
+            onData={(data) => claudeBridge.sendTerminalInput(data)}
+            onReady={() => {
+              terminalPaneRef.current?.resize();
+              const size = terminalPaneRef.current?.getSize();
+              if (size) {
+                claudeBridge.sendTerminalResize(size.cols, size.rows);
+              }
+            }}
+          />
         ) : (
           <ChatMessagesPane
             chatMessages={messages}
