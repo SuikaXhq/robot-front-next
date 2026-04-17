@@ -59,6 +59,7 @@ export interface ChatMessage {
   permissionAction?: 'read' | 'write' | 'execute';
   permissionRequestId?: string;
   displayText?: string;
+  a2uiPayload?: unknown;
   id?: string;
   messageId?: string;
   blobId?: string;

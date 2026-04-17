@@ -6,6 +6,7 @@ import MessageCopyControl from './MessageCopyControl';
 import { ToolRenderer } from './tools/ToolRenderer';
 import { shouldHideToolResult } from './tools/toolConfigs';
 import type { ChatMessage, ChatAttachment, SessionProvider } from './types';
+import A2uiChatBubble from './A2uiChatBubble';
 import styles from './ClaudeMessage.module.css';
 
 function useImagePreview() {
@@ -139,6 +140,21 @@ function sanitizeServerPaths(text: string): string {
   if (typeof text !== 'string') return text;
   // 把 .claude-uploads 前面的绝对路径前缀去掉（支持 Windows / Unix）
   return text.replace(/(?:[A-Za-z]:[\\/]|[\\/])(?:[^\\/]*[\\/])*(\.claude-uploads[\\/][^\s\t\n"']+)/g, '$1');
+}
+
+function extractA2uiMessages(content: string): unknown[] | null {
+  const match = content.match(/```a2ui\s*([\s\S]*?)\s*```/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as any).messages)) {
+      return (parsed as any).messages;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function getAttachmentSrc(data?: string, url?: string): string | undefined {
@@ -552,6 +568,12 @@ const ClaudeMessage = memo(({
 
                     {(() => {
                       const content = sanitizedMessageContent;
+
+                      const a2uiMessages = extractA2uiMessages(content);
+                      if (a2uiMessages) {
+                        return <A2uiChatBubble messages={a2uiMessages} />;
+                      }
+
                       const trimmedContent = content.trim();
                       if (
                         (trimmedContent.startsWith('{') || trimmedContent.startsWith('[')) &&

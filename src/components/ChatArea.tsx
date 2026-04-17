@@ -16,6 +16,7 @@ import { ChatInput } from './chat/ChatInput';
 import TerminalPane, { type TerminalPaneRef } from './chat/TerminalPane';
 import { claudeBridge, type StreamEvent } from '@/services/claudeBridgeClient';
 import { useChatSessions } from '@/contexts/ChatSessionContext';
+import { injectStyles } from '@a2ui/react/styles';
 
 const taskTreeData = [
   { title: '进入URL', key: '1' },
@@ -92,6 +93,19 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
     terminalPaneRef.current?.clear();
     claudeBridge.startSession({ dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current, mode });
   }, [currentSessionId, isBridgeReady, mode]);
+
+  // Inject A2UI structural styles and load Material Symbols font for icons
+  useEffect(() => {
+    injectStyles();
+    const fontLinkId = 'a2ui-material-symbols-font';
+    if (!document.getElementById(fontLinkId)) {
+      const link = document.createElement('link');
+      link.id = fontLinkId;
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0';
+      document.head.appendChild(link);
+    }
+  }, []);
 
   const handleEvent = useCallback((event: StreamEvent) => {
     switch (event.type) {
@@ -647,6 +661,22 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
         timestamp: new Date().toISOString(),
       } as ChatMessage,
     ]);
+
+    const isFileListQuery = /罗列.*(文件|目录)|列出.*(文件|目录)|当前目录.*文件/.test(displayContent);
+    if (isFileListQuery) {
+      setTimeout(() => {
+        const a2uiPayload = `\`\`\`a2ui\n[\n  {\n    "version": "v0.9",\n    "createSurface": {\n      "surfaceId": "file-list-demo",\n      "catalogId": "https://a2ui.org/specification/v0_9/basic_catalog.json",\n      "sendDataModel": true\n    }\n  },\n  {\n    "version": "v0.9",\n    "updateComponents": {\n      "surfaceId": "file-list-demo",\n      "components": [\n        { "id": "root", "component": "Card", "child": "main-column" },\n        { "id": "main-column", "component": "Column", "children": ["title", "file-1", "file-2", "file-3", "file-4"], "align": "stretch" },\n        { "id": "title", "component": "Text", "text": "当前目录文件列表", "variant": "h3" },\n        { "id": "file-1", "component": "Row", "children": ["icon-1", "name-1"], "align": "center" },\n        { "id": "icon-1", "component": "Icon", "name": "attachFile" },\n        { "id": "name-1", "component": "Text", "text": "README.md" },\n        { "id": "file-2", "component": "Row", "children": ["icon-2", "name-2"], "align": "center" },\n        { "id": "icon-2", "component": "Icon", "name": "folder" },\n        { "id": "name-2", "component": "Text", "text": "src/" },\n        { "id": "file-3", "component": "Row", "children": ["icon-3", "name-3"], "align": "center" },\n        { "id": "icon-3", "component": "Icon", "name": "insert_drive_file" },\n        { "id": "name-3", "component": "Text", "text": "package.json" },\n        { "id": "file-4", "component": "Row", "children": ["icon-4", "name-4"], "align": "center" },\n        { "id": "icon-4", "component": "Icon", "name": "insert_drive_file" },\n        { "id": "name-4", "component": "Text", "text": "CLAUDE.md" }\n      ]\n    }\n  }\n]\n\`\`\``;
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: 'assistant',
+            content: a2uiPayload,
+            timestamp: new Date().toISOString(),
+          } as ChatMessage,
+        ]);
+      }, 600);
+      return;
+    }
 
     if (!claudeBridge.isConnected()) {
       setMessages((prev) => [

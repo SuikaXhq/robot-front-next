@@ -28,7 +28,11 @@
       "Bash(git commit -m ':*)",
       "Bash(git checkout:*)",
       "Bash(npm ls:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(rm -rf /E/A2UI/renderers/react/node_modules)",
+      "Bash(PUPPETEER_SKIP_DOWNLOAD=true npm install)",
+      "Bash(npx tsup *)",
+      "Bash(npx kill-port *)"
     ]
   }
 }
