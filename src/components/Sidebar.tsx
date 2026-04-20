@@ -15,6 +15,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Tree, Dropdown, Popconfirm } from 'antd';
 import type { TreeDataNode } from 'antd';
+import { useRouter, usePathname } from 'next/navigation';
 import { useChatSessions } from '@/contexts/ChatSessionContext';
 
 const treeData: TreeDataNode[] = [
@@ -54,6 +55,15 @@ function formatTime(ts: number): string {
 export default function Sidebar() {
   const [taskViewMode, setTaskViewMode] = useState<'cases' | 'commands'>('cases');
   const { sessions, currentSessionId, createSession, switchSession, deleteSession } = useChatSessions();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleSwitchSession = (id: string) => {
+    switchSession(id);
+    if (pathname !== '/chat') {
+      router.push('/chat');
+    }
+  };
 
   return (
     <div className={styles.sidebar}>
@@ -73,7 +83,12 @@ export default function Sidebar() {
             type="text"
             size="small"
             icon={<PlusOutlined />}
-            onClick={createSession}
+            onClick={() => {
+              createSession();
+              if (pathname !== '/chat') {
+                router.push('/chat');
+              }
+            }}
             className={sessionStyles.newSessionBtn}
           >
             新建
@@ -87,7 +102,7 @@ export default function Sidebar() {
             <div
               key={session.id}
               className={`${sessionStyles.sessionItem} ${currentSessionId === session.id ? sessionStyles.sessionItemActive : ''}`}
-              onClick={() => switchSession(session.id)}
+              onClick={() => handleSwitchSession(session.id)}
             >
               <div className={sessionStyles.sessionItemLeft}>
                 <MessageOutlined className={sessionStyles.sessionIcon} />

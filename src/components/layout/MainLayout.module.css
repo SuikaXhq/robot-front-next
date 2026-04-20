@@ -57,7 +57,7 @@
 .mainContent {
   flex: 1;
   overflow: hidden;
-  padding: 0 24px 24px 24px;
+  padding: 24px;
   gap: 16px;
   display: flex;
   position: relative;
@@ -156,7 +156,7 @@
 
 .absolutePanel {
   position: absolute;
-  top: 0;
+  top: 24px;
   bottom: 24px;
   right: 24px;
   z-index: 100;

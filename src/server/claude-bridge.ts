@@ -15,6 +15,9 @@
  *                 前端能结构化渲染 tool_use、thinking、文本块等。
  * 2. terminal 模式: node-pty 伪终端。
  *                 完全还原原生 CLI 的 TUI 交互（权限提示、选择菜单、ANSI 颜色等）。
+ *
+ * 【重要设计】一个前端连接可以同时维护一个 chat run 和一个 terminal run。
+ * 切换 tab 时不需要关闭另一个 mode 的进程，只有切换历史会话或断开 WebSocket 时才全部清理。
  */
 
 import { createServer } from "http";
@@ -25,11 +28,6 @@ import { spawn, type ChildProcess } from "child_process";
 // 全局错误处理（防护 Windows 下 node-pty 的已知崩溃）
 // =============================================================================
 
-/**
- * Windows 上关闭 node-pty 的伪终端时，conpty agent 会抛出 `AttachConsole failed`
- * 的异常，直接杀死整个 Node 进程。
- * 这里显式捕获并忽略它，防止桥接服务器意外崩溃。
- */
 process.on("uncaughtException", (err: any) => {
   if (typeof err?.message === "string" && err.message.includes("AttachConsole")) {
     console.warn("[claude-bridge] Ignored known Windows node-pty AttachConsole error");
@@ -62,16 +60,6 @@ const isWindows = process.platform === "win32";
 // 类型定义
 // =============================================================================
 
-/**
- * RunState: 描述一个正在运行（或已结束）的 claude 会话。
- *
- * 字段说明：
- * - child: chat 模式下用 child_process.spawn 创建的子进程
- * - pty  : terminal 模式下用 node-pty 创建的伪终端实例
- * - mode : "chat" | "terminal"，决定后续与该 run 交互的方式
- * - buffer: 最近输出的环形缓冲，方便调试和回放
- * - status: idle | running | ended，状态机用于避免重复处理 exit 事件
- */
 interface RunState {
   child?: ChildProcess;
   pty?: any;
@@ -87,21 +75,16 @@ interface RunState {
   model?: string;
 }
 
-/**
- * ClientSession: 一个 WebSocket 连接对应的客户端会话。
- * 每个前端页面会建立一个 WebSocket，服务端为其维护最多一个 active RunState。
- */
 interface ClientSession {
   socket: WebSocket;
-  run?: RunState;
+  runs: {
+    chat?: RunState;
+    terminal?: RunState;
+  };
 }
 
-// 内存中的会话映射表：clientId -> ClientSession
 const sessions = new Map<string, ClientSession>();
 
-// =============================================================================
-// 辅助函数：生成唯一 ID
-// =============================================================================
 function generateClientId(): string {
   return `client-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -114,30 +97,6 @@ function generateRunId(): string {
 // 构建 claude CLI 启动参数
 // =============================================================================
 
-/**
- * buildClaudeArgs
- * ---------------------------------------------------------------------------
- * 根据运行模式和用户选项，生成要传给 `claude` 命令的参数数组。
- *
- * 【chat 模式】（默认）
- * - `--print`                  : 单轮非交互输出，输出完自动退出
- * - `--output-format=stream-json` : stdout 输出 JSON Lines 事件流
- * - `--input-format=stream-json`  : stdin 接收 JSON Lines 格式的用户消息
- * - `--verbose`                : 输出更完整的信息
- * - `--dangerously-skip-permissions` + `--permission-mode bypassPermissions`
- *                              : 双重保险，让 CLI 在启动时不弹确认菜单
- * - `--add-dir`                : 显式把某些目录加入白名单（用于 Approach A 的重试）
- * - `--resume <sessionId>`     : 恢复之前的持久化会话
- * - `--model <model>`          : 指定模型别名
- *
- * 【terminal 模式】
- * - 不使用 `--print`，也不使用 stream-json。
- * - 通过 shell（Windows: cmd.exe /c claude；Linux: bash -c 'claude ...'）启动，
- *   让 `claude` 以为自己运行在真实终端里，从而渲染完整的 TUI。
- * - 跳过权限确认时，**只传 `--permission-mode bypassPermissions`**。
- *   不传 `--dangerously-skip-permissions`，因为后者在 PTY 启动时会弹出一个
- *   阻塞式的 "Yes, I accept" 确认菜单，用户键盘未就绪前会卡死。
- */
 function buildClaudeArgs(options: {
   sessionId?: string;
   dangerouslySkipPermissions?: boolean;
@@ -153,32 +112,29 @@ function buildClaudeArgs(options: {
       args.push("--resume", options.sessionId);
     }
     if (options.dangerouslySkipPermissions) {
-      // PTY 模式下绝对不能带 --dangerously-skip-permissions，否则启动即阻塞。
       args.push("--permission-mode", "bypassPermissions");
     }
     if (options.model) {
       args.push("--model", options.model);
     }
     if (isWindows) {
-      // Windows 通过 cmd.exe /c 来启动 claude
       return { cmd: "cmd.exe", args: ["/c", "claude", ...args] };
     }
-    // Linux / macOS 通过 bash -c 启动
     return { cmd: "/bin/bash", args: ["-c", `claude ${args.join(" ")}`] };
   }
 
-  // chat 模式：pipe + JSON stream
+  // chat 模式
   const args: string[] = [
     "--print",
     "--output-format=stream-json",
     "--input-format=stream-json",
     "--verbose",
+    "--no-session-persistence",
   ];
   if (options.sessionId) {
     args.push("--resume", options.sessionId);
   }
   if (options.dangerouslySkipPermissions) {
-    // chat 模式传两个 flag，实测可直接生效且不弹确认
     args.push("--dangerously-skip-permissions");
     args.push("--permission-mode", "bypassPermissions");
   }
@@ -195,14 +151,6 @@ function buildClaudeArgs(options: {
 // 核心函数：启动 claude 子进程 / 伪终端
 // =============================================================================
 
-/**
- * spawnClaude
- * ---------------------------------------------------------------------------
- * 根据 mode 选择不同的启动策略，创建 RunState 并将其绑定到 ClientSession。
- *
- * 【重要设计】单 run 覆盖：一个 client 同时只能有一个 active run。
- * 如果已有 run，先调用 killRun 强制结束旧进程，再启动新的。
- */
 function spawnClaude(session: ClientSession, options: {
   sessionId?: string;
   projectPath?: string;
@@ -211,12 +159,12 @@ function spawnClaude(session: ClientSession, options: {
   model?: string;
   mode?: "chat" | "terminal";
 }): RunState {
-  // 1. 清理旧进程（如果有）
-  if (session.run) {
-    killRun(session);
+  const mode = options.mode || "chat";
+  const existingRun = session.runs[mode];
+  if (existingRun) {
+    killRun(existingRun);
   }
 
-  const mode = options.mode || "chat";
   const cwd = options.projectPath || process.cwd();
   const { cmd, args } = buildClaudeArgs({
     sessionId: options.sessionId,
@@ -229,12 +177,9 @@ function spawnClaude(session: ClientSession, options: {
   const runId = generateRunId();
   let run: RunState;
 
-  // ---------------------------------------------------------------------------
-  // 分支 A：terminal 模式 → 使用 node-pty 伪终端
-  // ---------------------------------------------------------------------------
   if (mode === "terminal" && ptyModule) {
     const ptyProcess = ptyModule.spawn(cmd, args, {
-      name: "xterm-256color",   // 让 claude 认为自己是 xterm 兼容终端
+      name: "xterm-256color",
       cols: 120,
       rows: 30,
       cwd,
@@ -242,7 +187,7 @@ function spawnClaude(session: ClientSession, options: {
         ...process.env,
         TERM: "xterm-256color",
         COLORTERM: "truecolor",
-        FORCE_COLOR: "1",       // 启用 ANSI 颜色输出
+        FORCE_COLOR: "1",
       },
     });
 
@@ -259,46 +204,38 @@ function spawnClaude(session: ClientSession, options: {
       dangerouslySkipPermissions: options.dangerouslySkipPermissions,
       model: options.model,
     };
-    session.run = run;
+    session.runs.terminal = run;
 
-    // PTY 输出事件：claude 的 TUI 内容（含 ANSI 转义码）原样转发给前端
     ptyProcess.onData((data: string) => {
       if (run.status !== "running") return;
       run.buffer.push(data);
-      if (run.buffer.length > 10000) {
-        run.buffer.shift();
-      }
+      if (run.buffer.length > 10000) run.buffer.shift();
       if (session.socket.readyState === WebSocket.OPEN) {
         session.socket.send(JSON.stringify({ type: "terminal.data", runId, data }));
       }
     });
 
-    // PTY 退出事件
     ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
       if (run.status !== "running") return;
       run.status = "ended";
       const reason = `Exit code: ${exitCode}`;
-      const payloadEnd = JSON.stringify({ type: "session.ended", runId, reason });
+      const payloadEnd = JSON.stringify({ type: "session.ended", runId, mode, reason });
       run.buffer.push(payloadEnd + "\n");
       if (session.socket.readyState === WebSocket.OPEN) {
         session.socket.send(payloadEnd);
       }
     });
 
-  // ---------------------------------------------------------------------------
-  // 分支 B：chat 模式 → 使用 child_process.spawn + 管道
-  // ---------------------------------------------------------------------------
   } else {
     const child = spawn(cmd, args, {
       cwd,
-      stdio: ["pipe", "pipe", "pipe"],  // 0:stdin, 1:stdout, 2:stderr
+      stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
         FORCE_COLOR: "0",
         NO_COLOR: "1",
         NODE_ENV: "production",
       },
-      // Windows 上，如果 cmd 不是 cmd.exe，需要 shell:true 才能正确解析命令
       shell: isWindows && cmd !== "cmd.exe",
       windowsHide: true,
     });
@@ -316,9 +253,8 @@ function spawnClaude(session: ClientSession, options: {
       dangerouslySkipPermissions: options.dangerouslySkipPermissions,
       model: options.model,
     };
-    session.run = run;
+    session.runs.chat = run;
 
-    // stdout 按行缓冲处理：stream-json 输出是 JSON Lines，每个完整逻辑行是一帧。
     let stdoutBuffer = "";
 
     child.stdout?.on("data", (data: Buffer) => {
@@ -330,9 +266,7 @@ function spawnClaude(session: ClientSession, options: {
         const trimmed = line.trim();
         if (!trimmed) continue;
         run.buffer.push(trimmed + "\n");
-        if (run.buffer.length > 10000) {
-          run.buffer.shift();
-        }
+        if (run.buffer.length > 10000) run.buffer.shift();
         console.log(`[claude-bridge] stdout [${runId}] -> ${trimmed.slice(0, 200)}`);
         if (session.socket.readyState === WebSocket.OPEN) {
           session.socket.send(
@@ -346,7 +280,7 @@ function spawnClaude(session: ClientSession, options: {
       if (run.status !== "running") return;
       const text = data.toString().trim();
       if (text) {
-        console.log(text)
+        console.log(text);
         run.buffer.push(JSON.stringify({ type: "error", runId, message: text }) + "\n");
         if (session.socket.readyState === WebSocket.OPEN) {
           session.socket.send(JSON.stringify({ type: "error", runId, message: text }));
@@ -357,7 +291,7 @@ function spawnClaude(session: ClientSession, options: {
     child.on("error", (err: Error) => {
       if (run.status !== "running") return;
       run.status = "ended";
-      const payloadEnd = JSON.stringify({ type: "session.ended", runId, reason: err.message });
+      const payloadEnd = JSON.stringify({ type: "session.ended", runId, mode, reason: err.message });
       run.buffer.push(payloadEnd + "\n");
       if (session.socket.readyState === WebSocket.OPEN) {
         session.socket.send(JSON.stringify({ type: "error", runId, message: err.message }));
@@ -372,7 +306,7 @@ function spawnClaude(session: ClientSession, options: {
         run.buffer.push(JSON.stringify({ type: "assistant.chunk", runId, content: stdoutBuffer.trim() + "\n" }) + "\n");
       }
       const reason = signal ? `Signal: ${signal}` : `Exit code: ${code}`;
-      const payloadEnd = JSON.stringify({ type: "session.ended", runId, reason });
+      const payloadEnd = JSON.stringify({ type: "session.ended", runId, mode, reason });
       run.buffer.push(payloadEnd + "\n");
       if (session.socket.readyState === WebSocket.OPEN) {
         session.socket.send(payloadEnd);
@@ -387,24 +321,12 @@ function spawnClaude(session: ClientSession, options: {
 // 消息发送相关函数
 // =============================================================================
 
-/**
- * sendToClaude
- * ---------------------------------------------------------------------------
- * 前端普通文本消息的统一入口。
- *
- * - terminal 模式：直接把文本写进 PTY（加 \r 模拟回车）。
- * - chat 模式：把文本包装成 stream-json 协议格式：
- *     { type: "user", message: { role: "user", content } }
- *   然后写入子进程 stdin，末尾加换行符。
- */
 const lastSentRef = { content: "", time: 0 };
 
 function sendToClaude(session: ClientSession, content: string): boolean {
-  const run = session.run;
-  if (!run || run.status !== "running") {
-    return false;
-  }
-  // 简单去重：300ms 内相同内容直接忽略，防止前端 IME/事件重复导致多发
+  const run = session.runs.chat;
+  if (!run || run.status !== "running") return false;
+
   const now = Date.now();
   if (content === lastSentRef.content && now - lastSentRef.time < 300) {
     console.log("[claude-bridge] sendToClaude dedup skipped:", JSON.stringify(content));
@@ -413,61 +335,27 @@ function sendToClaude(session: ClientSession, content: string): boolean {
   lastSentRef.content = content;
   lastSentRef.time = now;
 
-  if (run.mode === "terminal" && run.pty) {
-    console.log("[claude-bridge] sendToClaude terminal writing:", JSON.stringify(content + "\r"));
-    run.pty.write(content + "\r");
-    return true;
-  }
-  if (!run.child?.stdin?.writable) {
-    return false;
-  }
+  if (!run.child?.stdin?.writable) return false;
   const payload = JSON.stringify({
     type: "user",
-    message: {
-      role: "user",
-      content,
-    },
+    message: { role: "user", content },
   });
   run.child.stdin.write(payload + "\n");
   return true;
 }
 
-/**
- * sendRawToClaude
- * ---------------------------------------------------------------------------
- * 发送任意原始 JSON payload 到 claude stdin。目前只在 chat 模式下有效，
- * 用于某些高级场景（例如发送 tool_result）。
- */
 function sendRawToClaude(session: ClientSession, payload: unknown): boolean {
-  const run = session.run;
-  if (!run || run.status !== "running") {
-    return false;
-  }
-  if (run.mode === "terminal") {
-    return false;
-  }
-  if (!run.child?.stdin?.writable) {
-    return false;
-  }
+  const run = session.runs.chat;
+  if (!run || run.status !== "running") return false;
+  if (!run.child?.stdin?.writable) return false;
   run.child.stdin.write(JSON.stringify(payload) + "\n");
   return true;
 }
 
-/**
- * sendPermissionResponse
- * ---------------------------------------------------------------------------
- * chat 模式下响应权限请求（permission_request）。
- * 注意：stream-json 模式下目前实测几乎不会触发这个事件，但我们保留它
- * 以兼容未来可能的 CLI 更新。
- */
 function sendPermissionResponse(session: ClientSession, requestId: string, allow: boolean): boolean {
-  const run = session.run;
-  if (!run || run.status !== "running" || run.mode === "terminal") {
-    return false;
-  }
-  if (!run.child?.stdin?.writable) {
-    return false;
-  }
+  const run = session.runs.chat;
+  if (!run || run.status !== "running") return false;
+  if (!run.child?.stdin?.writable) return false;
   const payload = {
     type: "permission_response",
     request_id: requestId,
@@ -479,28 +367,17 @@ function sendPermissionResponse(session: ClientSession, requestId: string, allow
   return true;
 }
 
-/**
- * sendTerminalInput
- * ---------------------------------------------------------------------------
- * 专门用于 terminal 模式。
- * 前端 xterm.js 会把用户按的每一个键（包括方向键、回车、Ctrl 组合键）
- * 作为原始字符串发过来，这里原样写给 PTY。
- */
 function sendTerminalInput(session: ClientSession, data: string): boolean {
-  const run = session.run;
-  if (!run || run.status !== "running" || run.mode !== "terminal" || !run.pty) {
-    return false;
-  }
+  const run = session.runs.terminal;
+  if (!run || run.status !== "running" || !run.pty) return false;
   console.log("[claude-bridge] sendTerminalInput writing:", JSON.stringify(data));
   run.pty.write(data);
   return true;
 }
 
 function sendTerminalResize(session: ClientSession, cols: number, rows: number): boolean {
-  const run = session.run;
-  if (!run || run.status !== "running" || run.mode !== "terminal" || !run.pty) {
-    return false;
-  }
+  const run = session.runs.terminal;
+  if (!run || run.status !== "running" || !run.pty) return false;
   try {
     run.pty.resize(cols, rows);
   } catch {
@@ -513,46 +390,33 @@ function sendTerminalResize(session: ClientSession, cols: number, rows: number):
 // 控制与清理函数
 // =============================================================================
 
-/**
- * interruptClaude
- * ---------------------------------------------------------------------------
- * 向前端响应 "中断" 请求。
- * - terminal 模式：发送 ASCII 码 \x03（Ctrl+C）给 PTY。
- * - chat 模式：Windows 写 \x03 到 stdin；Linux/macOS 发送 SIGINT 信号。
- */
 function interruptClaude(session: ClientSession): boolean {
-  const run = session.run;
-  if (!run || run.status !== "running") return false;
-  if (run.mode === "terminal" && run.pty) {
-    run.pty.write("\x03");
-    return true;
+  let didAnything = false;
+
+  const chatRun = session.runs.chat;
+  if (chatRun && chatRun.status === "running" && chatRun.child) {
+    if (isWindows) {
+      chatRun.child.stdin?.write("\x03");
+    } else {
+      chatRun.child.kill("SIGINT");
+    }
+    didAnything = true;
   }
-  if (!run.child) return false;
-  if (isWindows) {
-    run.child.stdin?.write("\x03");
-  } else {
-    run.child.kill("SIGINT");
+
+  const terminalRun = session.runs.terminal;
+  if (terminalRun && terminalRun.status === "running" && terminalRun.pty) {
+    terminalRun.pty.write("\x03");
+    didAnything = true;
   }
-  return true;
+
+  return didAnything;
 }
 
-/**
- * killRun
- * ---------------------------------------------------------------------------
- * 强制终止当前的 claude run，清理引用，防止僵尸进程。
- *
- * Windows 下 PTY 的 kill 逻辑经过特调：
- * - 先清空 run.pty 引用，避免并发时重复 kill
- * - 使用 SIGKILL 而不是默认 kill，降低触发 AttachConsole 崩溃的概率
- */
-function killRun(session: ClientSession): void {
-  const run = session.run;
+function killRun(run: RunState): void {
   if (run?.child) {
     try {
       run.child.kill("SIGTERM");
-    } catch {
-      // ignore
-    }
+    } catch {}
     run.child = undefined;
   }
   if (run?.pty) {
@@ -564,33 +428,36 @@ function killRun(session: ClientSession): void {
       } else {
         ptyToKill.kill();
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
-  if (run) {
-    run.status = "ended";
+  run.status = "ended";
+}
+
+function killAllRuns(session: ClientSession): void {
+  if (session.runs.chat) {
+    killRun(session.runs.chat);
+    session.runs.chat = undefined;
   }
-  session.run = undefined;
+  if (session.runs.terminal) {
+    killRun(session.runs.terminal);
+    session.runs.terminal = undefined;
+  }
 }
 
 // =============================================================================
-// WebSocket 服务器：前端 ↔ 桥接层的通信协议
+// WebSocket 服务器
 // =============================================================================
 
 const httpServer = createServer();
 const wss = new WebSocketServer({ server: httpServer, path: "/claude" });
 
 wss.on("connection", (socket) => {
-  // 1. 为新连接分配 clientId 和 session
   const clientId = generateClientId();
-  const session: ClientSession = { socket };
+  const session: ClientSession = { socket, runs: {} };
   sessions.set(clientId, session);
 
-  // 2. 立即通知前端已连接
   socket.send(JSON.stringify({ type: "connected", clientId }));
 
-  // 3. 监听前端发来的消息
   socket.on("message", (raw) => {
     let message: any;
     try {
@@ -600,19 +467,26 @@ wss.on("connection", (socket) => {
       return;
     }
 
-    // 消息路由
     switch (message.type) {
-      // -----------------------------------------------------------------------
-      // session.start: 前端请求启动新会话
-      // -----------------------------------------------------------------------
       case "session.start": {
+        const mode: "chat" | "terminal" = message.mode === "terminal" ? "terminal" : "chat";
+        const existing = session.runs[mode];
+        if (existing && existing.status === "running") {
+          socket.send(JSON.stringify({
+            type: "session.started",
+            sessionId: existing.sessionId || clientId,
+            runId: existing.runId,
+            mode: existing.mode,
+          }));
+          break;
+        }
         const run = spawnClaude(session, {
           sessionId: message.sessionId,
           projectPath: message.projectPath,
           allowedDirs: message.allowedDirs,
           dangerouslySkipPermissions: message.dangerouslySkipPermissions,
           model: message.model,
-          mode: message.mode || "chat",
+          mode,
         });
         socket.send(JSON.stringify({
           type: "session.started",
@@ -623,21 +497,15 @@ wss.on("connection", (socket) => {
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // session.attach: 未实现（单 run 模式不需要）
-      // -----------------------------------------------------------------------
       case "session.attach": {
         socket.send(JSON.stringify({ type: "error", message: "Attach not supported in single-run mode" }));
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // message.send: 前端发送普通用户消息
-      // -----------------------------------------------------------------------
       case "message.send": {
-        const activeRun = session.run;
+        const activeRun = session.runs.chat;
         if (!activeRun || activeRun.status !== "running") {
-          socket.send(JSON.stringify({ type: "error", message: "No active claude session. Start a session first." }));
+          socket.send(JSON.stringify({ type: "error", message: "No active claude chat session. Start a session first." }));
           return;
         }
         const ok = sendToClaude(session, message.content || "");
@@ -647,13 +515,10 @@ wss.on("connection", (socket) => {
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // message.send_raw: 前端发送原始 JSON payload
-      // -----------------------------------------------------------------------
       case "message.send_raw": {
-        const activeRun = session.run;
+        const activeRun = session.runs.chat;
         if (!activeRun || activeRun.status !== "running") {
-          socket.send(JSON.stringify({ type: "error", message: "No active claude session. Start a session first." }));
+          socket.send(JSON.stringify({ type: "error", message: "No active claude chat session. Start a session first." }));
           return;
         }
         const ok = sendRawToClaude(session, message.payload);
@@ -663,13 +528,10 @@ wss.on("connection", (socket) => {
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // permission.response: 前端响应权限请求（仅 chat 模式）
-      // -----------------------------------------------------------------------
       case "permission.response": {
-        const activeRun = session.run;
+        const activeRun = session.runs.chat;
         if (!activeRun || activeRun.status !== "running") {
-          socket.send(JSON.stringify({ type: "error", message: "No active claude session. Start a session first." }));
+          socket.send(JSON.stringify({ type: "error", message: "No active claude chat session. Start a session first." }));
           return;
         }
         const ok = sendPermissionResponse(session, message.requestId, message.allow);
@@ -679,13 +541,10 @@ wss.on("connection", (socket) => {
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // terminal.input: 前端键盘输入（仅 terminal 模式）
-      // -----------------------------------------------------------------------
       case "terminal.input": {
-        const activeRun = session.run;
+        const activeRun = session.runs.terminal;
         if (!activeRun || activeRun.status !== "running") {
-          socket.send(JSON.stringify({ type: "error", message: "No active claude session. Start a session first." }));
+          socket.send(JSON.stringify({ type: "error", message: "No active claude terminal session. Start a session first." }));
           return;
         }
         const ok = sendTerminalInput(session, message.data || "");
@@ -695,13 +554,10 @@ wss.on("connection", (socket) => {
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // terminal.resize: 前端终端尺寸变化（仅 terminal 模式）
-      // -----------------------------------------------------------------------
       case "terminal.resize": {
-        const activeRun = session.run;
+        const activeRun = session.runs.terminal;
         if (!activeRun || activeRun.status !== "running") {
-          socket.send(JSON.stringify({ type: "error", message: "No active claude session. Start a session first." }));
+          socket.send(JSON.stringify({ type: "error", message: "No active claude terminal session. Start a session first." }));
           return;
         }
         const ok = sendTerminalResize(session, Number(message.cols) || 80, Number(message.rows) || 24);
@@ -711,24 +567,16 @@ wss.on("connection", (socket) => {
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // session.interrupt: 中断当前输出
-      // -----------------------------------------------------------------------
       case "session.interrupt": {
-        const activeRun = session.run;
-        if (!activeRun || activeRun.status !== "running") {
+        const ok = interruptClaude(session);
+        if (!ok) {
           socket.send(JSON.stringify({ type: "error", message: "No active session to interrupt" }));
-          return;
         }
-        interruptClaude(session);
         break;
       }
 
-      // -----------------------------------------------------------------------
-      // session.close: 前端主动关闭会话
-      // -----------------------------------------------------------------------
       case "session.close": {
-        killRun(session);
+        killAllRuns(session);
         socket.send(JSON.stringify({ type: "session.ended", reason: "Session closed by user" }));
         break;
       }
@@ -738,15 +586,14 @@ wss.on("connection", (socket) => {
     }
   });
 
-  // 4. WebSocket 关闭 / 出错 → 清理资源
   socket.on("close", () => {
-    killRun(session);
+    killAllRuns(session);
     sessions.delete(clientId);
   });
 
   socket.on("error", (err) => {
     console.error("WebSocket error:", err);
-    killRun(session);
+    killAllRuns(session);
     sessions.delete(clientId);
   });
 });
@@ -759,12 +606,12 @@ httpServer.listen(PORT, () => {
 });
 
 // =============================================================================
-// 优雅关闭：收到 SIGINT 时清理所有子进程
+// 优雅关闭
 // =============================================================================
 process.on("SIGINT", () => {
   console.log("\n[claude-bridge] Shutting down...");
   for (const session of sessions.values()) {
-    killRun(session);
+    killAllRuns(session);
   }
   wss.close(() => {
     httpServer.close(() => {

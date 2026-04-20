@@ -53,6 +53,7 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
   const [mode, setMode] = useState<'chat' | 'terminal'>('chat');
   const terminalPaneRef = useRef<TerminalPaneRef>(null);
   const terminalBufferRef = useRef<string>('');
+  const startedModesRef = useRef<Set<'chat' | 'terminal'>>(new Set());
 
   const {
     currentSession,
@@ -62,6 +63,16 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
     switchSession,
     sessions,
   } = useChatSessions();
+
+  const currentSessionRef = useRef(currentSession);
+  const currentSessionIdRef = useRef(currentSessionId);
+
+  useEffect(() => {
+    currentSessionRef.current = currentSession;
+  }, [currentSession]);
+  useEffect(() => {
+    currentSessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
@@ -84,14 +95,26 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
     return () => clearTimeout(timer);
   }, [messages, currentSessionId, updateSessionMessages]);
 
-  // Start a fresh backend session when switching frontend sessions or mode
+  // Start a fresh backend session when switching frontend sessions
   useEffect(() => {
     if (!isBridgeReady || !currentSessionId) return;
     setIsSessionReady(false);
     claudeBridge.closeSession();
     terminalPaneRef.current?.clear();
-    claudeBridge.startSession({ dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current, mode });
-  }, [currentSessionId, isBridgeReady, mode]);
+    terminalBufferRef.current = '';
+    startedModesRef.current.clear();
+    claudeBridge.startSession({ dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current, mode: 'chat' });
+    startedModesRef.current.add('chat');
+  }, [currentSessionId, isBridgeReady]);
+
+  // Lazily start terminal session when user switches to terminal tab
+  useEffect(() => {
+    if (!isBridgeReady || !currentSessionId) return;
+    if (mode === 'terminal' && !startedModesRef.current.has('terminal')) {
+      claudeBridge.startSession({ dangerouslySkipPermissions: dangerouslySkipPermissionsRef.current, mode: 'terminal' });
+      startedModesRef.current.add('terminal');
+    }
+  }, [mode, currentSessionId, isBridgeReady]);
 
   const handleEvent = useCallback((event: StreamEvent) => {
     switch (event.type) {
@@ -354,20 +377,8 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
           terminalBufferRef.current = terminalBufferRef.current.slice(-10000);
         }
       },
-      onSessionStarted: (_, startedMode) => {
+      onSessionStarted: () => {
         setIsSessionReady(true);
-        if (startedMode === 'terminal') {
-          terminalPaneRef.current?.clear();
-          terminalBufferRef.current = '';
-          // Sync terminal size after a short delay so xterm has finished fitting
-          setTimeout(() => {
-            terminalPaneRef.current?.resize();
-            const size = terminalPaneRef.current?.getSize();
-            if (size) {
-              claudeBridge.sendTerminalResize(size.cols, size.rows);
-            }
-          }, 100);
-        }
       },
       onSessionEnded: () => {
         setIsStreaming(false);
@@ -506,8 +517,12 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
         setIsStreaming(false);
         contentBlocksRef.current = [];
         clearCurrentSession();
+        terminalBufferRef.current = '';
+        terminalPaneRef.current?.clear();
         claudeBridge.closeSession();
-        claudeBridge.startSession({ dangerouslySkipPermissions });
+        startedModesRef.current.clear();
+        claudeBridge.startSession({ dangerouslySkipPermissions, mode: 'chat' });
+        startedModesRef.current.add('chat');
         return true;
       }
       case '/resume': {
@@ -767,7 +782,7 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
       </div>
 
       <div className={styles.messagesContainer}>
-        {mode === 'terminal' ? (
+        <div style={{ display: mode === 'terminal' ? 'flex' : 'none', flexDirection: 'column', width: '100%', height: '100%' }}>
           <TerminalPane
             ref={terminalPaneRef}
             onData={(data) => claudeBridge.sendTerminalInput(data)}
@@ -779,7 +794,8 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
               }
             }}
           />
-        ) : (
+        </div>
+        <div style={{ display: mode === 'chat' ? 'flex' : 'none', flexDirection: 'column', width: '100%', height: '100%' }}>
           <ChatMessagesPane
             chatMessages={messages}
             isLoading={isStreaming}
@@ -802,7 +818,7 @@ export default function ChatArea({ onToggleSidebar }: ChatAreaProps) {
               ]);
             }}
           />
-        )}
+        </div>
       </div>
 
       {mode !== 'terminal' && (

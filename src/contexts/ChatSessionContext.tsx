@@ -71,8 +71,14 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
       if (raw) {
         const parsed = JSON.parse(raw) as ChatSession[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setSessions(parsed);
-          setCurrentSessionId(parsed[0].id);
+          const seen = new Set<string>();
+          const deduped = parsed.filter((s) => {
+            if (seen.has(s.id)) return false;
+            seen.add(s.id);
+            return true;
+          });
+          setSessions(deduped);
+          setCurrentSessionId(deduped[0].id);
         } else {
           const id = generateId();
           const initial: ChatSession = {
@@ -193,9 +199,35 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
     return sessions.find((s) => s.id === currentSessionId) || null;
   }, [sessions, currentSessionId]);
 
+  // One-time cleanup: dedupe sessions in memory after loading from localStorage
+  useEffect(() => {
+    if (!loaded) return;
+    const ids = sessions.map((s) => s.id);
+    const uniqueIds = new Set(ids);
+    if (uniqueIds.size !== ids.length) {
+      const seen = new Set<string>();
+      const deduped = sessions.filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+      setSessions(deduped);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  const dedupedSessions = useMemo(() => {
+    const seen = new Set<string>();
+    return sessions.filter((s) => {
+      if (seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+  }, [sessions]);
+
   const value = useMemo(
     () => ({
-      sessions,
+      sessions: dedupedSessions,
       currentSessionId,
       createSession,
       switchSession,
@@ -204,7 +236,7 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
       clearCurrentSession,
       currentSession,
     }),
-    [sessions, currentSessionId, createSession, switchSession, deleteSession, updateSessionMessages, clearCurrentSession, currentSession]
+    [dedupedSessions, currentSessionId, createSession, switchSession, deleteSession, updateSessionMessages, clearCurrentSession, currentSession]
   );
 
   return <ChatSessionContext.Provider value={value}>{children}</ChatSessionContext.Provider>;

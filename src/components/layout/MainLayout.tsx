@@ -6,6 +6,7 @@ import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/Sidebar';
 import RightPanel from '@/components/RightPanel';
 import { FileSystemProvider } from '@/contexts/FileSystemContext';
+import { ChatSessionProvider } from '@/contexts/ChatSessionContext';
 
 interface MainLayoutProps {
   children: React.ReactNode | ((toggleSidebar: () => void, isSidebarOpen: boolean) => React.ReactNode);
@@ -72,20 +73,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
     : children;
 
   return (
-    <FileSystemProvider>
-      <div className={styles.layoutContainer}>
-        <header className={styles.appHeader}>
+    <ChatSessionProvider>
+      <FileSystemProvider>
+        <div className={styles.layoutContainer}>
+        {/* <header className={styles.appHeader}>
           <Navbar />
-        </header>
+        </header> */}
 
-        <div className={styles.subHeader}>
+        {/* <div className={styles.subHeader}>
           <div className={styles.breadcrumb}>
             <span className={styles.grayText}>Robot</span>
             <span className={styles.separator}>/</span>
             <span className={styles.boldText}>新建Robot</span>
           </div>
           <button className={styles.saveBtn}>保存</button>
-        </div>
+        </div> */}
 
         <div className={`${styles.mainContent} ${isFullscreen ? styles.isFullscreenMode : ''}`}>
           <aside
@@ -122,6 +124,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </aside>
         </div>
       </div>
-    </FileSystemProvider>
+      </FileSystemProvider>
+    </ChatSessionProvider>
   );
 }
