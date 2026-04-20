@@ -416,6 +416,25 @@ export function shouldHideToolResult(toolName: string, toolResult: any): boolean
 
 ## 集成与使用
 
+### 会话上下文与布局层级
+
+`ChatSessionProvider` 负责管理聊天会话列表（创建、切换、删除、持久化）。它在 `MainLayout` 中全局注入，因此所有通过 `MainLayout` 渲染的页面共享同一套会话状态：
+
+```tsx
+// src/components/layout/MainLayout.tsx
+<ChatSessionProvider>
+  <FileSystemProvider>
+    <div className={styles.layoutContainer}>
+      <aside>{isSidebarOpen && <Sidebar />}</aside>
+      <main>{children}</main>
+      {/* ... */}
+    </div>
+  </FileSystemProvider>
+</ChatSessionProvider>
+```
+
+`Sidebar` 依赖 `useChatSessions()` 显示会话列表；点击会话或新建会话时，若当前不在 `/chat` 页面会自动路由跳转。这保证了从任何页面切到聊天页时状态一致。
+
 ### ChatArea.tsx 中的使用方式
 
 ```tsx
@@ -425,21 +444,28 @@ import ChatMessagesPane from './chat/ChatMessagesPane';
 export default function ChatArea() {
   const [messages, setMessages] = useState<ChatMessage[]>([...]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [mode, setMode] = useState<'chat' | 'terminal'>('chat');
 
   return (
     <div className={styles.chatArea}>
-      {/* header ... */}
+      {/* header + mode tabs ... */}
 
       <div className={styles.messagesContainer}>
-        <ChatMessagesPane
-          chatMessages={messages}
-          isLoading={isStreaming}
-          provider="claude"
-          showThinking={true}
-          autoExpandTools={false}
-          showRawParameters={false}
-          onFileOpen={(filePath, diffInfo) => { ... }}
-        />
+        {/* Chat 和 Terminal 两个 Pane 同时挂载，通过 display 切换 */}
+        <div style={{ display: mode === 'terminal' ? 'flex' : 'none' }}>
+          <TerminalPane ... />
+        </div>
+        <div style={{ display: mode === 'chat' ? 'flex' : 'none' }}>
+          <ChatMessagesPane
+            chatMessages={messages}
+            isLoading={isStreaming}
+            provider="claude"
+            showThinking={true}
+            autoExpandTools={false}
+            showRawParameters={false}
+            onFileOpen={(filePath, diffInfo) => { ... }}
+          />
+        </div>
       </div>
 
       <ChatInput ... />
@@ -447,6 +473,10 @@ export default function ChatArea() {
   );
 }
 ```
+
+**为什么 chat 和 terminal 同时挂载？**
+
+切换 `mode` 时只改变 CSS `display`，不卸载 DOM。这样 terminal 的 xterm.js 实例和滚动位置得以保留；切回 terminal tab 时状态完整恢复，无需重新初始化。
 
 ### CSS 容器调整
 
@@ -473,10 +503,17 @@ export default function ChatArea() {
 
 Next.js 在开发模式下会频繁热重载（HMR），如果把 `claude` 子进程直接放在页面或 API Route 里管理，进程引用会在每次重载后丢失，导致会话断裂。因此我们在项目外单独启动一个轻量级 Node.js HTTP + WebSocket 服务（`src/server/claude-bridge.ts`），它专门负责：
 
-1. **Spawn `claude` 子进程**（`claude --print --output-format=stream-json --input-format=stream-json --verbose`）。
-2. **维护 WebSocket 会话**（`clientId → ChildProcess` 的 Map）。
-3. **转发 JSON Lines 流**：把 `claude` stdout 的每一行原样通过 WebSocket `assistant.chunk` 推给前端。
-4. **写入用户消息**：把用户输入序列化后写入 `claude` 进程的 stdin。
+1. **Spawn `claude` 子进程 / 伪终端**（chat 模式用 `child_process.spawn`，terminal 模式用 `node-pty`）。
+2. **维护 WebSocket 会话**（`clientId → { chat?: RunState, terminal?: RunState }` 的 Map）。
+3. **转发 JSON Lines 流**（chat 模式）或 **ANSI 数据流**（terminal 模式）。
+4. **写入用户消息**（chat）或 **键盘输入**（terminal）。
+
+### 两种运行模式
+
+| 模式 | 启动方式 | 输出格式 | 适用场景 |
+|---|---|---|---|
+| **chat** | `claude --print --output-format=stream-json --input-format=stream-json` | JSON Lines 事件流 | 结构化渲染消息、工具调用、思考过程 |
+| **terminal** | `node-pty` 伪终端（Windows: `cmd.exe /c claude`，Unix: `bash -c 'claude ...'`） | 原始 ANSI TUI 输出 | 完整 CLI 交互体验（权限菜单、选择框、颜色等） |
 
 ### 数据流架构
 
@@ -484,64 +521,121 @@ Next.js 在开发模式下会频繁热重载（HMR），如果把 `claude` 子�
 用户输入
   ↓
 ChatArea.tsx
-  ↓ (WebSocket 发送)
-ClaudeBridgeClient  →  ws://localhost:3002
+  ↓ (WebSocket 发送，带 mode 参数)
+ClaudeBridgeClient  →  ws://localhost:3002/claude
   ↓
 claude-bridge.ts (Node.js 进程)
-  ↓ (child_process.spawn)
-claude CLI (本地已安装)
-  ↓ (stdout JSON Lines)
+  ├─ chat run    → child_process.spawn → claude CLI (pipe 模式)
+  └─ terminal run → node-pty.spawn      → claude CLI (PTY 模式)
+  ↓ (stdout / PTY onData)
 claude-bridge.ts
+  ├─ chat    → assistant.chunk (JSON Lines)
+  └─ terminal → terminal.data (ANSI 字符串)
   ↓ (WebSocket 推送)
-ChatArea.tsx 逐行解析 → 更新 messages 状态
-  ↓
-ClaudeMessage / ToolRenderer 渲染
+ChatArea.tsx
+  ├─ chat    → 逐行解析 → 更新 messages 状态 → ClaudeMessage / ToolRenderer
+  └─ terminal → 写入 xterm.js → 终端渲染
 ```
+
+### 双模式并发设计
+
+一个 WebSocket 连接（一个前端页面）可以同时维护 **一个 chat run 和一个 terminal run**。两者互不干扰：
+
+- 切换 chat / terminal tab 时**不会**关闭另一个模式的进程。
+- 只有以下情况才会全部清理：
+  - 用户切换历史会话（`currentSessionId` 改变）
+  - 用户主动关闭会话（`session.close`）
+  - WebSocket 断开
+
+后端 `ClientSession` 的数据结构：
+
+```ts
+interface ClientSession {
+  socket: WebSocket;
+  runs: {
+    chat?: RunState;      // pipe 子进程
+    terminal?: RunState;  // node-pty 实例
+  };
+}
+```
+
+### Terminal 懒加载
+
+Terminal 模式下的 `claude` PTY 进程**不会**在页面加载时立即启动。只有当用户第一次点击切换到 terminal tab 时，前端才发送 `session.start { mode: 'terminal' }`。这减少了不必要的资源消耗，也避免了初始加载时的双重进程开销。
+
+Chat 模式的进程则在进入会话时立即启动（`session.start { mode: 'chat' }`），因为 chat 是主要交互界面。
 
 ### 核心协议
 
 #### 1. 启动 `claude` 进程
 
-Bridge Server 在收到前端的 `session.start` 后，会执行：
+Bridge Server 在收到前端的 `session.start` 后，根据 `mode` 选择启动方式：
+
+**chat 模式：**
 
 ```ts
-import { spawn } from 'child_process';
-
 const proc = spawn('claude', [
   '--print',
   '--output-format=stream-json',
   '--input-format=stream-json',
-  '--verbose'
+  '--verbose',
+  '--no-session-persistence',
 ], {
   cwd: projectPath,
-  env: {
-    ...process.env,
-    FORCE_COLOR: '0',
-    NODE_ENV: 'production'
-  }
+  env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1', NODE_ENV: 'production' }
 });
 ```
 
 - `--print` 让 CLI 进入非交互式管道模式。
-- `--output-format=stream-json` 让 stdout 输出类似 Anthropic API 的流式 JSON 事件（`assistant`、`content_block_delta`、`message_stop` 等）。
+- `--output-format=stream-json` 让 stdout 输出类似 Anthropic API 的流式 JSON 事件。
 - `--input-format=stream-json` 让 stdin 接收同样的 JSON Lines 格式。
+
+**terminal 模式：**
+
+```ts
+const ptyProcess = ptyModule.spawn('cmd.exe', ['/c', 'claude', ...args], {
+  name: 'xterm-256color',
+  cols: 120,
+  rows: 30,
+  cwd: projectPath,
+  env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', FORCE_COLOR: '1' }
+});
+```
+
+- 通过 shell 包装启动 `claude`，让 CLI 认为自己运行在真实终端中。
+- 使用 `xterm-256color` 启用完整的 ANSI 颜色和 TUI 渲染。
+- **不**使用 `--print` 和 stream-json，保持原生交互行为。
+- 跳过权限确认时只传 `--permission-mode bypassPermissions`（不传 `--dangerously-skip-permissions`，后者在 PTY 启动时会弹出阻塞式确认菜单）。
 
 #### 2. WebSocket 消息类型
 
 **前端发送给桥接服务：**
 
-- `session.start` — 启动一个新的 `claude` 会话。
-- `message.send` — 发送用户消息。
-- `session.interrupt` — 中断当前流式输出。
+| 消息类型 | 说明 | 目标模式 |
+|---|---|---|
+| `session.start` | 启动一个新的 `claude` 会话。需指定 `mode: 'chat' \| 'terminal'` | 两者 |
+| `message.send` | 发送用户消息（JSON Lines 格式） | chat |
+| `message.send_raw` | 发送原始 JSON 负载到 stdin | chat |
+| `permission.response` | 回复权限请求（`requestId`, `allow`） | chat |
+| `terminal.input` | 发送键盘输入字符串到 PTY | terminal |
+| `terminal.resize` | 调整 PTY 尺寸（`cols`, `rows`） | terminal |
+| `session.interrupt` | 中断当前流式输出（发送 `Ctrl+C`） | 两者 |
+| `session.close` | 关闭所有 runs 并清理会话 | 两者 |
 
 **桥接服务推送给前端：**
 
-- `connected` — 握手成功，返回 `clientId`。
-- `session.started` — `claude` 子进程已启动。
-- `assistant.chunk` — 从 `claude` stdout 读取到的**一行**原始 JSON。
-- `session.ended` / `error` — 会话结束或异常。
+| 消息类型 | 说明 | 来源模式 |
+|---|---|---|
+| `connected` | 握手成功，返回 `clientId` | — |
+| `session.started` | `claude` 子进程已启动，返回 `runId` 和 `mode` | 两者 |
+| `assistant.chunk` | 从 `claude` stdout 读取到的一行原始 JSON | chat |
+| `terminal.data` | PTY 输出的原始 ANSI 数据块 | terminal |
+| `session.ended` | 会话正常结束或异常退出 | 两者 |
+| `error` | 错误信息 | 两者 |
 
 #### 3. 前端流解析 (`ClaudeBridgeClient.ts`)
+
+**chat 模式：**
 
 客户端维护一个 `buffer`，每次收到 `assistant.chunk` 后执行：
 
@@ -571,6 +665,16 @@ for (const line of lines) {
 | `message_stop` / `result` | 消息结束 | `isStreaming: false` |
 | `error` | 错误 | 追加 `type: 'error'` 消息 |
 
+**terminal 模式：**
+
+收到 `terminal.data` 后直接追加到 xterm.js 的 buffer：
+
+```ts
+terminalPaneRef.current?.write(data);
+```
+
+xterm.js 负责解析 ANSI escape sequences 并渲染完整的 TUI 界面。
+
 ### 文件上传的处理方式
 
 因为 `claude` CLI 在 `--print` 模式下只能读取文本或本地文件路径，我们不能直接把浏览器里的 `File` 对象传给进程。当前方案如下：
@@ -582,9 +686,11 @@ for (const line of lines) {
 5. 前端把相对路径拼进消息文本（如 `"请看这张图片 .claude-uploads/image.png"`），连同文字一起发给 `claude`。
 6. UI 层使用 `sanitizeServerPaths()` 和 `displayFilePath()` 进一步隐藏路径细节，只展示文件名或 `.claude-uploads/...` 后缀。
 
-### 关于权限提示的限制
+### 关于权限提示
 
-在 `--print` 模式下，`claude` **不会**弹出交互式权限确认（例如 "Allow reading files?"）。如果某条操作需要权限而被拒绝，CLI 会在流中返回一个 `user` 类型事件，内部携带 `tool_result` 且 `is_error: true`，对应内容会渲染为错误气泡（红色边框 + 错误文案）。因此 Web 端无需、也无法实现类似 CLI TTY 的 "允许 / 拒绝" 按钮。
+**chat 模式：** 在 `--print` 模式下，`claude` **不会**弹出交互式权限确认（例如 "Allow reading files?"）。如果某条操作需要权限而被拒绝，CLI 会在流中返回一个 `user` 类型事件，内部携带 `tool_result` 且 `is_error: true`，对应内容会渲染为错误气泡（红色边框 + 错误文案）。因此 Web 端无需、也无法实现类似 CLI TTY 的 "允许 / 拒绝" 按钮。
+
+**terminal 模式：** 由于运行在 PTY 中，`claude` CLI 会显示完整的 TUI 权限菜单（y/n 确认、方向键选择等）。用户直接在终端内用键盘交互即可。前端通过 `terminal.input` 把按键转发到 PTY，体验与本地终端完全一致。
 
 ---
 
