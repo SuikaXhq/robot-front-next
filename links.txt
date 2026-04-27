@@ -1,0 +1,37 @@
+## Git
+
+https://github.com/git-for-windows/git/releases/download/v2.54.0.windows.1/Git-2.54.0-64-bit.exe
+
+## python
+
+https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip
+
+## node
+
+https://nodejs.org/dist/v24.15.0/node-v24.15.0-win-x64.zip
+
+## pnpm
+
+https://github.com/pnpm/pnpm/releases/download/v10.33.1/pnpm-win-x64.exe
+
+## uv
+
+https://releases.astral.sh/github/uv/releases/download/0.11.7/uv-x86_64-pc-windows-msvc.zip
+
+## chromium
+
+Download url:        https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1181/chromium-win64.zip
+Download fallback 1: https://playwright.download.prss.microsoft.com/dbazure/download/playwright/builds/chromium/1181/chromium-win64.zip
+Download fallback 2: https://cdn.playwright.dev/builds/chromium/1181/chromium-win64.zip
+
+## chromium-headless-shell version
+
+Download url:        https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1181/chromium-headless-shell-win64.zip
+Download fallback 1: https://playwright.download.prss.microsoft.com/dbazure/download/playwright/builds/chromium/1181/chromium-headless-shell-win64.zip
+Download fallback 2: https://cdn.playwright.dev/builds/chromium/1181/chromium-headless-shell-win64.zip
+
+## winldd
+
+Download url:        https://cdn.playwright.dev/dbazure/download/playwright/builds/winldd/1007/winldd-win64.zip
+Download fallback 1: https://playwright.download.prss.microsoft.com/dbazure/download/playwright/builds/winldd/1007/winldd-win64.zip
+Download fallback 2: https://cdn.playwright.dev/builds/winldd/1007/winldd-win64.zip
